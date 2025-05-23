@@ -1,6 +1,7 @@
 // frontend/src/pages/DataPage.jsx - Updated untuk menggunakan endpoint public - LENGKAP
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 const DataPage = () => {
     // State untuk menyimpan data
@@ -27,7 +28,7 @@ const DataPage = () => {
         try {
             setLoading(true);
             // Gunakan endpoint public untuk halaman DataPage
-            const response = await axios.get('http://localhost:5000/api/rth-kecamatan/public');
+            const response = await axios.get(`${API_BASE_URL}/api/rth-kecamatan/public`);
 
             // Format data dari database untuk UI
             const formattedData = response.data.map((item, index) => ({

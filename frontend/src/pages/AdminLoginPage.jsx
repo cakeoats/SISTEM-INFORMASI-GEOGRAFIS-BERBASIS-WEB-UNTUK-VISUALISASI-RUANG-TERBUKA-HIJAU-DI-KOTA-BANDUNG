@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 const AdminLoginPage = () => {
     const [formData, setFormData] = useState({
@@ -25,7 +26,7 @@ const AdminLoginPage = () => {
 
     const verifyExistingToken = async (token) => {
         try {
-            const response = await axios.get('http://localhost:5000/api/auth/profile', {
+            const response = await axios.get(`${API_BASE_URL}/api/auth/profile`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -66,7 +67,7 @@ const AdminLoginPage = () => {
 
         try {
             // API call untuk login
-            const response = await axios.post('http://localhost:5000/api/auth/login', {
+            const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
                 username: formData.username.trim(),
                 password: formData.password
             });

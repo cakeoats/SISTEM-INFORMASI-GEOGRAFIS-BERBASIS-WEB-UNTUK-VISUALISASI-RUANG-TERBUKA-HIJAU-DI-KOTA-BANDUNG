@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import RthManagement from '../components/RthManagement';
+import { API_BASE_URL } from '../config';
 
 const AdminDashboard = () => {
     const [adminData, setAdminData] = useState(null);
@@ -25,7 +26,7 @@ const AdminDashboard = () => {
                 return;
             }
 
-            const response = await axios.get('http://localhost:5000/api/auth/profile', {
+            const response = await axios.get(`${API_BASE_URL}/api/auth/profile`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -45,7 +46,7 @@ const AdminDashboard = () => {
             const token = localStorage.getItem('adminToken');
 
             // Fetch RTH statistics
-            const rthResponse = await axios.get('http://localhost:5000/api/rth-kecamatan', {
+            const rthResponse = await axios.get(`${API_BASE_URL}/api/rth-kecamatan`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -87,7 +88,7 @@ const AdminDashboard = () => {
 
             // Call logout API
             if (token) {
-                await axios.post('http://localhost:5000/api/auth/logout', {}, {
+                await axios.post(`${API_BASE_URL}/api/auth/logout`, {}, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }

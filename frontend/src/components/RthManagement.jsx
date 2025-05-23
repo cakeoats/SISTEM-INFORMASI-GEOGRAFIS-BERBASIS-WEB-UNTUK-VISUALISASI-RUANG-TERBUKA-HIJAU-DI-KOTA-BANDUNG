@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ExcelDataLoader from './ExcelDataLoader';
+import { API_BASE_URL } from '../config';
 
 const RthManagement = () => {
     const [rthData, setRthData] = useState([]);
@@ -78,7 +79,7 @@ const RthManagement = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('adminToken');
-            const response = await axios.get('http://localhost:5000/api/rth-kecamatan', {
+            const response = await axios.get(`${API_BASE_URL}/api/rth-kecamatan`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -148,7 +149,7 @@ const RthManagement = () => {
 
             if (editingItem) {
                 // Update existing item
-                await axios.put(`http://localhost:5000/api/rth-kecamatan/${editingItem.id}`, submitData, {
+                await axios.put(`${API_BASE_URL}/api/rth-kecamatan/${editingItem.id}`, submitData, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -156,7 +157,7 @@ const RthManagement = () => {
                 alert('Data berhasil diperbarui');
             } else {
                 // Create new item
-                await axios.post('http://localhost:5000/api/rth-kecamatan', submitData, {
+                await axios.post(`${API_BASE_URL}/api/rth-kecamatan`, submitData, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -201,7 +202,7 @@ const RthManagement = () => {
         if (window.confirm(`Apakah Anda yakin ingin menghapus data ${item.kecamatan}?`)) {
             try {
                 const token = localStorage.getItem('adminToken');
-                await axios.delete(`http://localhost:5000/api/rth-kecamatan/${item.id}`, {
+                await axios.delete(`${API_BASE_URL}/api/rth-kecamatan/${item.id}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }

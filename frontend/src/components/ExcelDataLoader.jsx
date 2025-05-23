@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 const ExcelDataLoader = ({ onDataLoaded }) => {
     const [loading, setLoading] = useState(false);
@@ -101,7 +102,7 @@ const ExcelDataLoader = ({ onDataLoaded }) => {
             console.log("Data yang akan dikirim ke database:", dbData);
 
             const token = localStorage.getItem('adminToken');
-            const response = await axios.post('http://localhost:5000/api/rth-kecamatan/bulk', {
+            const response = await axios.post(`${API_BASE_URL}/api/rth-kecamatan/bulk`, {
                 data: dbData
             }, {
                 headers: {

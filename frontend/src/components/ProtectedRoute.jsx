@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 const ProtectedRoute = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(null); // null = loading, true/false = result
@@ -22,7 +23,7 @@ const ProtectedRoute = ({ children }) => {
             }
 
             // Verify token dengan API
-            const response = await axios.get('http://localhost:5000/api/auth/profile', {
+            const response = await axios.get(`${API_BASE_URL}/api/auth/profile`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
