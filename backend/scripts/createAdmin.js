@@ -6,7 +6,7 @@ require('dotenv').config();
 const createInitialAdmin = async () => {
     try {
         // Connect to MongoDB
-        await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/bandung-gis');
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb+srv://may:may453@may.44rc33j.mongodb.net/?retryWrites=true&w=majority&appName=May');
         console.log('Connected to MongoDB');
 
         // Cek apakah sudah ada admin
@@ -19,8 +19,8 @@ const createInitialAdmin = async () => {
 
         // Data admin default
         const adminData = {
-            username: 'may',
-            password: 'may'
+            username: '123456',
+            password: '123456',
         };
 
         // Buat admin baru
