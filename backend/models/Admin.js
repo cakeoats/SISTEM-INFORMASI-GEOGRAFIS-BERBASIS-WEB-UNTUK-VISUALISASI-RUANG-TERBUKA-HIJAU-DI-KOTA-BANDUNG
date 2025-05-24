@@ -1,4 +1,4 @@
-// backend/models/Admin.js
+// backend/models/Admin.js - Simplified version
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -46,16 +46,10 @@ AdminSchema.methods.comparePassword = async function (candidatePassword) {
     }
 };
 
-// Method untuk update last login
+// Method untuk update last login (dummy method untuk kompatibilitas)
 AdminSchema.methods.updateLastLogin = function () {
-    this.lastLogin = new Date();
-    return this.save();
+    // Tidak perlu update apapun, hanya return promise resolved
+    return Promise.resolve();
 };
-
-// Update timestamp sebelum save
-AdminSchema.pre('save', function (next) {
-    this.updatedAt = new Date();
-    next();
-});
 
 module.exports = mongoose.model('Admin', AdminSchema, 'admins');

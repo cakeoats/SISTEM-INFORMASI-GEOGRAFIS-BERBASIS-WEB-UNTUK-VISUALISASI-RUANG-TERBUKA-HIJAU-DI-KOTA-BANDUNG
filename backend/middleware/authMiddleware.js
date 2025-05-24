@@ -1,4 +1,4 @@
-// backend/middleware/authMiddleware.js
+// backend/middleware/authMiddleware.js - Simplified version
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
 
@@ -26,7 +26,7 @@ const verifyToken = async (req, res, next) => {
         }
 
         // Verify token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret_key');
 
         // Cari admin berdasarkan ID dari token
         const admin = await Admin.findById(decoded.adminId).select('-password');
@@ -35,13 +35,6 @@ const verifyToken = async (req, res, next) => {
             return res.status(401).json({
                 success: false,
                 message: 'Token is valid but admin not found.'
-            });
-        }
-
-        if (!admin.isActive) {
-            return res.status(401).json({
-                success: false,
-                message: 'Admin account is deactivated.'
             });
         }
 
@@ -73,9 +66,9 @@ const verifyToken = async (req, res, next) => {
     }
 };
 
-// Middleware untuk verifikasi role admin
+// Middleware untuk verifikasi role admin (simplified - semua admin punya akses sama)
 const requireAdmin = (req, res, next) => {
-    if (req.admin && (req.admin.role === 'admin' || req.admin.role === 'super_admin')) {
+    if (req.admin) {
         next();
     } else {
         res.status(403).json({
@@ -85,9 +78,10 @@ const requireAdmin = (req, res, next) => {
     }
 };
 
-// Middleware untuk verifikasi role super admin
+// Middleware untuk verifikasi role super admin (tidak digunakan, tapi tetap ada untuk kompatibilitas)
 const requireSuperAdmin = (req, res, next) => {
-    if (req.admin && req.admin.role === 'super_admin') {
+    // Karena hanya ada satu role, semua admin dianggap super admin
+    if (req.admin) {
         next();
     } else {
         res.status(403).json({
@@ -97,7 +91,7 @@ const requireSuperAdmin = (req, res, next) => {
     }
 };
 
-module.exports = {
+module.exports = {  
     verifyToken,
     requireAdmin,
     requireSuperAdmin

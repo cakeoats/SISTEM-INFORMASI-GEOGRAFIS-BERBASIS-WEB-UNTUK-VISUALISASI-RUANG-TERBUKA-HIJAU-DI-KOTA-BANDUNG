@@ -1,4 +1,4 @@
-// backend/controllers/authController.js
+// backend/controllers/authController.js - Simplified version
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
 
@@ -6,7 +6,7 @@ const Admin = require('../models/Admin');
 const generateToken = (adminId) => {
     return jwt.sign(
         { adminId },
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET || 'default_secret_key',
         {
             expiresIn: process.env.JWT_EXPIRES_IN || '24h'
         }
@@ -36,14 +36,6 @@ exports.loginAdmin = async (req, res) => {
             });
         }
 
-        // Cek apakah admin aktif
-        if (!admin.isActive) {
-            return res.status(401).json({
-                success: false,
-                message: 'Akun admin tidak aktif'
-            });
-        }
-
         // Verify password
         const isPasswordValid = await admin.comparePassword(password);
 
@@ -54,7 +46,7 @@ exports.loginAdmin = async (req, res) => {
             });
         }
 
-        // Update last login
+        // Update last login (dummy call untuk kompatibilitas)
         await admin.updateLastLogin();
 
         // Generate JWT token
@@ -69,9 +61,8 @@ exports.loginAdmin = async (req, res) => {
                 admin: {
                     id: admin._id,
                     username: admin.username,
-                    email: admin.email,
-                    role: admin.role,
-                    lastLogin: admin.lastLogin
+                    role: 'admin', // Fixed role
+                    createdAt: admin.createdAt
                 }
             }
         });
@@ -97,9 +88,7 @@ exports.getAdminProfile = async (req, res) => {
                 admin: {
                     id: admin._id,
                     username: admin.username,
-                    email: admin.email,
-                    role: admin.role,
-                    lastLogin: admin.lastLogin,
+                    role: 'admin', // Fixed role
                     createdAt: admin.createdAt
                 }
             }
@@ -186,69 +175,6 @@ exports.changePassword = async (req, res) => {
 
     } catch (error) {
         console.error('Change password error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
-        });
-    }
-};
-
-// Create Admin (Super Admin only)
-exports.createAdmin = async (req, res) => {
-    try {
-        const { username, password, email, role } = req.body;
-
-        // Validasi input
-        if (!username || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Username dan password harus diisi'
-            });
-        }
-
-        if (password.length < 6) {
-            return res.status(400).json({
-                success: false,
-                message: 'Password minimal 6 karakter'
-            });
-        }
-
-        // Cek apakah username sudah ada
-        const existingAdmin = await Admin.findOne({ username: username.toLowerCase() });
-        if (existingAdmin) {
-            return res.status(400).json({
-                success: false,
-                message: 'Username sudah digunakan'
-            });
-        }
-
-        // Buat admin baru
-        const newAdmin = new Admin({
-            username: username.toLowerCase(),
-            password,
-            email: email || null,
-            role: role || 'admin'
-        });
-
-        await newAdmin.save();
-
-        res.status(201).json({
-            success: true,
-            message: 'Admin berhasil dibuat',
-            data: {
-                admin: {
-                    id: newAdmin._id,
-                    username: newAdmin.username,
-                    email: newAdmin.email,
-                    role: newAdmin.role,
-                    isActive: newAdmin.isActive,
-                    createdAt: newAdmin.createdAt
-                }
-            }
-        });
-
-    } catch (error) {
-        console.error('Create admin error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error'
