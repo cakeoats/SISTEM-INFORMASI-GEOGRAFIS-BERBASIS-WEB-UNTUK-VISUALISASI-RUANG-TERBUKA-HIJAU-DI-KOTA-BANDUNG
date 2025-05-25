@@ -280,10 +280,6 @@ const AdminDashboard = () => {
                                             <span className="font-medium">{adminData.username}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span className="text-gray-600">Email:</span>
-                                            <span className="font-medium">{adminData.email || 'Tidak tersedia'}</span>
-                                        </div>
-                                        <div className="flex justify-between">
                                             <span className="text-gray-600">Role:</span>
                                             <span className="font-medium capitalize">{adminData.role}</span>
                                         </div>

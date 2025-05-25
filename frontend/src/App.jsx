@@ -24,7 +24,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           {/* Public Routes - dengan navbar */}
           <Route
             path="/*"
