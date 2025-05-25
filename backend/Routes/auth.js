@@ -1,4 +1,4 @@
-// backend/Routes/auth.js
+// backend/Routes/auth.js - Updated dengan admin management routes
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
@@ -14,5 +14,8 @@ router.post('/change-password', verifyToken, requireAdmin, authController.change
 
 // Super admin only routes
 router.post('/create-admin', verifyToken, requireSuperAdmin, authController.createAdmin);
+router.get('/admins', verifyToken, requireSuperAdmin, authController.getAllAdmins);
+router.put('/admins/:adminId/toggle-status', verifyToken, requireSuperAdmin, authController.toggleAdminStatus);
+router.delete('/admins/:adminId', verifyToken, requireSuperAdmin, authController.deleteAdmin);
 
 module.exports = router;

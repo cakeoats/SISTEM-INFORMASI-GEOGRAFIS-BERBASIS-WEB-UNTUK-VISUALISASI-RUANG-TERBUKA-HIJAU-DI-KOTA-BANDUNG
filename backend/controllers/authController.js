@@ -1,4 +1,4 @@
-// backend/controllers/authController.js
+// backend/controllers/authController.js - Updated dengan improved createAdmin
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
 
@@ -193,7 +193,7 @@ exports.changePassword = async (req, res) => {
     }
 };
 
-// Create Admin (Super Admin only)
+// Create Admin (Super Admin only) - Updated
 exports.createAdmin = async (req, res) => {
     try {
         const { username, password, email, role } = req.body;
@@ -206,6 +206,13 @@ exports.createAdmin = async (req, res) => {
             });
         }
 
+        if (username.length < 3) {
+            return res.status(400).json({
+                success: false,
+                message: 'Username minimal 3 karakter'
+            });
+        }
+
         if (password.length < 6) {
             return res.status(400).json({
                 success: false,
@@ -213,8 +220,11 @@ exports.createAdmin = async (req, res) => {
             });
         }
 
+        // Normalize username
+        const normalizedUsername = username.toLowerCase().trim();
+
         // Cek apakah username sudah ada
-        const existingAdmin = await Admin.findOne({ username: username.toLowerCase() });
+        const existingAdmin = await Admin.findOne({ username: normalizedUsername });
         if (existingAdmin) {
             return res.status(400).json({
                 success: false,
@@ -222,15 +232,37 @@ exports.createAdmin = async (req, res) => {
             });
         }
 
+        // Validasi email jika diberikan
+        if (email && email.trim()) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.trim())) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Format email tidak valid'
+                });
+            }
+
+            // Cek apakah email sudah digunakan
+            const existingEmailAdmin = await Admin.findOne({ email: email.trim() });
+            if (existingEmailAdmin) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Email sudah digunakan'
+                });
+            }
+        }
+
         // Buat admin baru
         const newAdmin = new Admin({
-            username: username.toLowerCase(),
+            username: normalizedUsername,
             password,
-            email: email || null,
-            role: role || 'admin'
+            email: email && email.trim() ? email.trim() : null,
+            role: role && ['admin', 'super_admin'].includes(role) ? role : 'admin'
         });
 
         await newAdmin.save();
+
+        console.log(`Admin baru dibuat: ${normalizedUsername} dengan role: ${newAdmin.role}`);
 
         res.status(201).json({
             success: true,
@@ -249,6 +281,132 @@ exports.createAdmin = async (req, res) => {
 
     } catch (error) {
         console.error('Create admin error:', error);
+
+        // Handle duplicate key error
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.status(400).json({
+                success: false,
+                message: `${field === 'username' ? 'Username' : 'Email'} sudah digunakan`
+            });
+        }
+
+        res.status(500).json({
+            success: false,
+            message: 'Server error saat membuat admin'
+        });
+    }
+};
+
+// Get All Admins (Super Admin only)
+exports.getAllAdmins = async (req, res) => {
+    try {
+        const admins = await Admin.find({}, '-password').sort({ createdAt: -1 });
+
+        res.json({
+            success: true,
+            data: {
+                admins: admins.map(admin => ({
+                    id: admin._id,
+                    username: admin.username,
+                    email: admin.email,
+                    role: admin.role,
+                    isActive: admin.isActive,
+                    lastLogin: admin.lastLogin,
+                    createdAt: admin.createdAt,
+                    updatedAt: admin.updatedAt
+                })),
+                total: admins.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Get all admins error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+};
+
+// Toggle Admin Status (Super Admin only)
+exports.toggleAdminStatus = async (req, res) => {
+    try {
+        const { adminId } = req.params;
+        const currentAdmin = req.admin;
+
+        // Cek apakah admin yang akan diubah adalah diri sendiri
+        if (currentAdmin._id.toString() === adminId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Tidak dapat mengubah status akun sendiri'
+            });
+        }
+
+        const targetAdmin = await Admin.findById(adminId);
+        if (!targetAdmin) {
+            return res.status(404).json({
+                success: false,
+                message: 'Admin tidak ditemukan'
+            });
+        }
+
+        // Toggle status
+        targetAdmin.isActive = !targetAdmin.isActive;
+        await targetAdmin.save();
+
+        res.json({
+            success: true,
+            message: `Admin ${targetAdmin.username} ${targetAdmin.isActive ? 'diaktifkan' : 'dinonaktifkan'}`,
+            data: {
+                admin: {
+                    id: targetAdmin._id,
+                    username: targetAdmin.username,
+                    isActive: targetAdmin.isActive
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Toggle admin status error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+};
+
+// Delete Admin (Super Admin only)
+exports.deleteAdmin = async (req, res) => {
+    try {
+        const { adminId } = req.params;
+        const currentAdmin = req.admin;
+
+        // Cek apakah admin yang akan dihapus adalah diri sendiri
+        if (currentAdmin._id.toString() === adminId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Tidak dapat menghapus akun sendiri'
+            });
+        }
+
+        const targetAdmin = await Admin.findById(adminId);
+        if (!targetAdmin) {
+            return res.status(404).json({
+                success: false,
+                message: 'Admin tidak ditemukan'
+            });
+        }
+
+        await Admin.findByIdAndDelete(adminId);
+
+        res.json({
+            success: true,
+            message: `Admin ${targetAdmin.username} berhasil dihapus`
+        });
+
+    } catch (error) {
+        console.error('Delete admin error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error'
