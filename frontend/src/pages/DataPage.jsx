@@ -200,7 +200,7 @@ const DataPage = () => {
             XLSX.writeFile(workbook, filename);
 
             // Tampilkan notifikasi sukses
-            alert(`Data berhasil didownload: ${filename}\n\nTotal data: ${dataToExport.length - 1} kecamatan`);
+            alert(`Data berhasil didownload: ${filename}\n\nTotal data: ${dataToExport.length} kecamatan`);
 
         } catch (error) {
             console.error('Error downloading Excel:', error);
