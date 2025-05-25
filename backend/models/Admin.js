@@ -16,7 +16,29 @@ const AdminSchema = new mongoose.Schema({
         required: true,
         minlength: 6
     },
+    email: {
+        type: String,
+        required: false,
+        trim: true
+    },
+    role: {
+        type: String,
+        enum: ['admin', 'super_admin'],
+        default: 'admin'
+    },
+    isActive: {
+        type: Boolean,
+        default: true
+    },
+    lastLogin: {
+        type: Date,
+        default: null
+    },
     createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
         type: Date,
         default: Date.now
     }
