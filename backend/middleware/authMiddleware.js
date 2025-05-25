@@ -1,6 +1,7 @@
 // backend/middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
+const TokenBlacklist = require('../models/TokenBlacklist');
 
 // Middleware untuk verifikasi JWT token
 const verifyToken = async (req, res, next) => {
@@ -22,6 +23,15 @@ const verifyToken = async (req, res, next) => {
             return res.status(401).json({
                 success: false,
                 message: 'Access denied. Invalid token format.'
+            });
+        }
+
+        // Check if token is blacklisted
+        const blacklistedToken = await TokenBlacklist.findOne({ token });
+        if (blacklistedToken) {
+            return res.status(401).json({
+                success: false,
+                message: 'Token has been invalidated.'
             });
         }
 

@@ -1,13 +1,12 @@
 // frontend/src/components/Map.jsx - FIXED untuk menggunakan endpoint public
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
-import axios from 'axios';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, publicAxios } from '../config';
 
 const BandungMap = () => {
     // State untuk data GeoJSON kecamatan dan data RTH
@@ -40,13 +39,13 @@ const BandungMap = () => {
 
                 // Fetch kecamatan boundaries
                 console.log('Fetching kecamatan boundaries...');
-                const kecamatanResponse = await axios.get(`${API_BASE_URL}/api/kecamatan/public`);
+                const kecamatanResponse = await publicAxios.get('/api/kecamatan/public');
                 console.log('Kecamatan data received:', kecamatanResponse.data);
                 setGeoData(kecamatanResponse.data);
 
                 // Fetch RTH data - PENTING: gunakan endpoint /public
                 console.log('Fetching RTH data from public endpoint...');
-                const rthResponse = await axios.get(`${API_BASE_URL}/api/rth-kecamatan/public`);
+                const rthResponse = await publicAxios.get('/api/rth-kecamatan/public');
                 console.log('RTH data received:', rthResponse.data);
                 setRthData(rthResponse.data);
 

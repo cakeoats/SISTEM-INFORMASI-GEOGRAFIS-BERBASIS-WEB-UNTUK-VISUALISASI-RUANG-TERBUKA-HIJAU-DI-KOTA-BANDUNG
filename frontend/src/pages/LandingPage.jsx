@@ -24,7 +24,7 @@ const LandingPage = () => {
                         Bandung Green Spaces
                     </h1>
                     <p className="text-xl md:text-2xl text-center max-w-5xl mb-10 font-semibold">
-                        Sistem Informasi Geografis Pemetaan Ruang Terbuka Hijau Pada 30 Kecamatan Di Kota Bandung
+                        Sistem Informasi Geografis Pemetaan Ruang Terbuka Hijau Di Kota Bandung
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4">
                         <Link to="/peta" className="bg-green-700 hover:bg-green-800 text-white font-bold py-3 px-10 rounded-lg shadow-lg transition-all duration-300 text-center text-md">

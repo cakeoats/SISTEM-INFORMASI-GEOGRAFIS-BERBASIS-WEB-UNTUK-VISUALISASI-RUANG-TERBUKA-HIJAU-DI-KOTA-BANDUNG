@@ -6,14 +6,39 @@ const dotenv = require('dotenv');
 const kecamatanRoutes = require('./Routes/kecamatan');
 const rthKecamatanRoutes = require('./Routes/rthKecamatan');
 const authRoutes = require('./Routes/auth');
+const adminRoutes = require('./Routes/admin');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 
+// CORS configuration
+app.use(cors({
+    origin: 'https://website-sig-blue.vercel.app',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    credentials: false, // Set to false for public endpoints
+    maxAge: 86400 // 24 hours
+}));
+
+// Add CORS headers middleware
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'https://website-sig-blue.vercel.app');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+    res.header('Access-Control-Allow-Credentials', 'false'); // Set to false for public endpoints
+    res.header('Access-Control-Expose-Headers', 'Content-Range, X-Content-Range');
+    
+    // Handle preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
+    next();
+});
+
 // Middleware
-app.use(cors());
 app.use(express.json());
 
 // MongoDB connection options
@@ -53,9 +78,10 @@ const connectWithRetry = async () => {
         });
 
         // Create new connection with explicit database name
-        const uri = process.env.MONGO_URI.endsWith('/') 
-            ? `${process.env.MONGO_URI}bandung-gis` 
-            : `${process.env.MONGO_URI}/bandung-gis`;
+        const baseUri = process.env.MONGO_URI;
+        const uri = baseUri.endsWith('/') 
+            ? `${baseUri}bandung-gis` 
+            : `${baseUri}/bandung-gis`;
             
         console.log('Connecting to MongoDB...', uri);
         
@@ -88,7 +114,15 @@ const connectWithRetry = async () => {
             });
         }
         
-        console.log('MongoDB connected successfully');
+        // Verify database name
+        const dbName = mongoose.connection.db.databaseName;
+        console.log('Connected to MongoDB database:', dbName);
+
+        if (dbName !== 'bandung-gis') {
+            throw new Error(`Connected to wrong database: ${dbName}. Expected: bandung-gis`);
+        }
+        
+        console.log('MongoDB connected successfully to bandung-gis database');
         
         // Verify connection with ping
         try {
@@ -140,10 +174,14 @@ app.use(ensureMongoConnection);
 app.get('/health', (req, res) => {
     const dbState = mongoose.connection.readyState;
     const dbStatus = dbState === 1 ? 'connected' : 'disconnected';
+    const dbName = mongoose.connection.db?.databaseName || 'unknown';
     
     res.status(200).json({
         status: 'ok',
-        database: dbStatus,
+        database: {
+            status: dbStatus,
+            name: dbName
+        },
         timestamp: new Date().toISOString()
     });
 });
@@ -205,6 +243,9 @@ app.use('/api/rth-kecamatan', rthKecamatanRoutes);
 
 // Auth routes
 app.use('/api/auth', authRoutes);
+
+// Admin routes
+app.use('/api/admin', adminRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

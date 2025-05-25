@@ -1,6 +1,8 @@
 // backend/controllers/authController.js
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
+const mongoose = require('mongoose');
+const TokenBlacklist = require('../models/TokenBlacklist');
 
 // Generate JWT Token
 const generateToken = (adminId) => {
@@ -16,43 +18,85 @@ const generateToken = (adminId) => {
 // Login Admin
 exports.loginAdmin = async (req, res) => {
     try {
+        console.log('Login attempt:', { username: req.body.username });
         const { username, password } = req.body;
 
         // Validasi input
         if (!username || !password) {
+            console.log('Missing credentials');
             return res.status(400).json({
                 success: false,
                 message: 'Username dan password harus diisi'
             });
         }
 
+        // Ensure MongoDB connection
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB not connected, attempting to connect...');
+            try {
+                await mongoose.connect(process.env.MONGO_URI, {
+                    useNewUrlParser: true,
+                    useUnifiedTopology: true
+                });
+                console.log('MongoDB connected successfully');
+            } catch (dbError) {
+                console.error('MongoDB connection error:', dbError);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Database connection error'
+                });
+            }
+        }
+
+        // Verify collection name
+        const collections = await mongoose.connection.db.listCollections().toArray();
+        const adminCollection = collections.find(c => c.name === 'admins');
+        console.log('Available collections:', collections.map(c => c.name));
+        console.log('Using collection:', Admin.collection.name);
+
         // Cari admin berdasarkan username
-        const admin = await Admin.findOne({ username: username.toLowerCase() });
+        console.log('Searching for admin with username:', username.trim());
+        const admin = await Admin.findOne({ username: username.trim() });
+        console.log('Admin search result:', admin ? 'Found' : 'Not found');
 
         if (!admin) {
+            console.log('Admin not found');
             return res.status(401).json({
                 success: false,
-                message: 'Username atau password salah'
+                message: 'Username salah'
             });
         }
 
         // Verify password
+        console.log('Verifying password');
         const isPasswordValid = await admin.comparePassword(password);
+        console.log('Password verification result:', isPasswordValid ? 'Valid' : 'Invalid');
 
         if (!isPasswordValid) {
+            console.log('Invalid password');
             return res.status(401).json({
                 success: false,
-                message: 'Username atau password salah'
+                message: 'Password salah'
             });
         }
 
         // Update last login
-        await admin.updateLastLogin();
+        try {
+            console.log('Updating last login');
+            await admin.updateLastLogin();
+            console.log('Last login updated successfully');
+        } catch (updateError) {
+            console.error('Error updating last login:', updateError);
+            // Continue with login even if last login update fails
+        }
 
         // Generate JWT token
+        console.log('Generating JWT token');
         const token = generateToken(admin._id);
+        console.log('Token generated successfully');
 
         // Response success
+        console.log('Login successful, sending response');
         res.json({
             success: true,
             message: 'Login berhasil',
@@ -70,9 +114,11 @@ exports.loginAdmin = async (req, res) => {
 
     } catch (error) {
         console.error('Login error:', error);
+        console.error('Error stack:', error.stack);
         res.status(500).json({
             success: false,
-            message: 'Server error during login'
+            message: 'Server error during login',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 };
@@ -80,6 +126,15 @@ exports.loginAdmin = async (req, res) => {
 // Get Admin Profile (Protected route)
 exports.getAdminProfile = async (req, res) => {
     try {
+        // Ensure MongoDB connection
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB not connected, attempting to connect...');
+            await mongoose.connect(process.env.MONGO_URI, {
+                useNewUrlParser: true,
+                useUnifiedTopology: true
+            });
+        }
+
         // req.admin sudah tersedia dari middleware verifyToken
         const admin = req.admin;
 
@@ -106,23 +161,30 @@ exports.getAdminProfile = async (req, res) => {
     }
 };
 
-// Logout Admin (Optional - for token blacklisting in the future)
+// Logout Admin
 exports.logoutAdmin = async (req, res) => {
     try {
-        // Untuk sekarang, logout hanya mengembalikan success
-        // Di masa depan bisa ditambahkan token blacklisting
+        // Ensure MongoDB connection
+        if (mongoose.connection.readyState !== 1) {
+            console.log('MongoDB not connected, attempting to connect...');
+            await mongoose.connect(process.env.MONGO_URI, {
+                useNewUrlParser: true,
+                useUnifiedTopology: true
+            });
+        }
 
-        res.json({
-            success: true,
-            message: 'Logout berhasil'
-        });
-
+        const token = req.headers.authorization?.split(' ')[1];
+        if (token) {
+            // Add to blacklist collection
+            await TokenBlacklist.create({ 
+                token, 
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) 
+            });
+        }
+        res.json({ success: true, message: 'Logout berhasil' });
     } catch (error) {
         console.error('Logout error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error during logout'
-        });
+        res.status(500).json({ success: false, message: 'Server error during logout' });
     }
 };
 
@@ -247,3 +309,18 @@ exports.createAdmin = async (req, res) => {
         });
     }
 };
+
+const findAdminWithRetry = async (username, maxRetries = 3) => {
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await Admin.findOne({ username: username.toLowerCase() });
+        } catch (error) {
+            if (i === maxRetries - 1) throw error;
+            await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+        }
+    }
+};
+
+mongoose.connection.on('error', (err) => {
+    console.error('MongoDB connection error:', err);
+});
