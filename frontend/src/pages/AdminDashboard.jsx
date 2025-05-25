@@ -1,9 +1,8 @@
-// frontend/src/pages/AdminDashboard.jsx - Updated dengan admin management
+// frontend/src/pages/AdminDashboard.jsx - Updated dengan tab navigation dan RTH management
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import RthManagement from '../components/RthManagement';
-import CreateAdminForm from '../components/CreateAdminForm';
 import { API_BASE_URL } from '../config';
 
 const AdminDashboard = () => {
@@ -11,7 +10,7 @@ const AdminDashboard = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('overview'); // overview, rth-management, admin-management
+    const [activeTab, setActiveTab] = useState('overview'); // overview, rth-management
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -120,12 +119,6 @@ const AdminDashboard = () => {
         });
     };
 
-    const handleAdminCreated = (newAdmin) => {
-        // Callback ketika admin baru berhasil dibuat
-        console.log('Admin baru dibuat:', newAdmin);
-        // Bisa ditambahkan logic refresh data admin list jika diperlukan
-    };
-
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -152,11 +145,6 @@ const AdminDashboard = () => {
                         <div className="flex items-center space-x-4">
                             <div className="text-sm text-gray-700">
                                 Welcome, <span className="font-medium">{adminData?.username || 'Admin'}</span>
-                                {adminData?.role === 'super_admin' && (
-                                    <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
-                                        Super Admin
-                                    </span>
-                                )}
                             </div>
                             <button
                                 onClick={handleLogout}
@@ -176,8 +164,8 @@ const AdminDashboard = () => {
                         <button
                             onClick={() => setActiveTab('overview')}
                             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
-                                ? 'border-green-500 text-green-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-green-500 text-green-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
                             Overview
@@ -185,23 +173,12 @@ const AdminDashboard = () => {
                         <button
                             onClick={() => setActiveTab('rth-management')}
                             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'rth-management'
-                                ? 'border-green-500 text-green-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-green-500 text-green-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
                             Manajemen Data RTH
                         </button>
-                        {adminData?.role === 'super_admin' && (
-                            <button
-                                onClick={() => setActiveTab('admin-management')}
-                                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'admin-management'
-                                    ? 'border-green-500 text-green-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                    }`}
-                            >
-                                Manajemen Admin
-                            </button>
-                        )}
                     </nav>
                 </div>
             </div>
@@ -308,9 +285,7 @@ const AdminDashboard = () => {
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Role:</span>
-                                            <span className="font-medium capitalize">
-                                                {adminData.role === 'super_admin' ? 'Super Admin' : 'Admin'}
-                                            </span>
+                                            <span className="font-medium capitalize">{adminData.role}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Last Login:</span>
@@ -404,19 +379,17 @@ const AdminDashboard = () => {
                                     </div>
                                 </button>
 
-                                {adminData?.role === 'super_admin' && (
-                                    <button
-                                        onClick={() => setActiveTab('admin-management')}
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white p-4 rounded-lg transition-colors"
-                                    >
-                                        <div className="text-center">
-                                            <svg className="h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                            </svg>
-                                            <p className="font-medium">Kelola Admin</p>
-                                        </div>
-                                    </button>
-                                )}
+                                <button
+                                    onClick={() => navigate('/')}
+                                    className="bg-gray-600 hover:bg-gray-700 text-white p-4 rounded-lg transition-colors"
+                                >
+                                    <div className="text-center">
+                                        <svg className="h-8 w-8 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                        </svg>
+                                        <p className="font-medium">Ke Beranda</p>
+                                    </div>
+                                </button>
                             </div>
                         </div>
                     </>
@@ -425,34 +398,6 @@ const AdminDashboard = () => {
                 {/* RTH Management Tab Content */}
                 {activeTab === 'rth-management' && (
                     <RthManagement />
-                )}
-
-                {/* Admin Management Tab Content */}
-                {activeTab === 'admin-management' && adminData?.role === 'super_admin' && (
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-2xl font-bold text-gray-900">Manajemen Admin</h2>
-                            <div className="flex items-center text-sm text-gray-600">
-                                <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                </svg>
-                                Hanya Super Admin yang dapat mengakses
-                            </div>
-                        </div>
-
-                        <CreateAdminForm onAdminCreated={handleAdminCreated} />
-                    </div>
-                )}
-
-                {/* Show access denied for non-super admin trying to access admin management */}
-                {activeTab === 'admin-management' && adminData?.role !== 'super_admin' && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                        <svg className="h-16 w-16 text-red-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                        <h3 className="text-lg font-medium text-red-800 mb-2">Akses Ditolak</h3>
-                        <p className="text-red-600">Anda tidak memiliki izin untuk mengakses manajemen admin. Hanya Super Admin yang dapat mengelola akun admin.</p>
-                    </div>
                 )}
             </main>
         </div>

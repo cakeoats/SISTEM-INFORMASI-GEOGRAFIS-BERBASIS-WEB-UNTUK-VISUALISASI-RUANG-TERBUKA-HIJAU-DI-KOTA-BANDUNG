@@ -1,4 +1,4 @@
-// backend/models/Admin.js - Updated dengan role system
+// backend/models/Admin.js
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -9,37 +9,14 @@ const AdminSchema = new mongoose.Schema({
         unique: true,
         trim: true,
         minlength: 3,
-        maxlength: 50,
-        lowercase: true
+        maxlength: 50
     },
     password: {
         type: String,
         required: true,
         minlength: 6
     },
-    email: {
-        type: String,
-        trim: true,
-        default: null
-    },
-    role: {
-        type: String,
-        enum: ['admin', 'super_admin'],
-        default: 'admin'
-    },
-    isActive: {
-        type: Boolean,
-        default: true
-    },
-    lastLogin: {
-        type: Date,
-        default: null
-    },
     createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    updatedAt: {
         type: Date,
         default: Date.now
     }
@@ -80,9 +57,5 @@ AdminSchema.pre('save', function (next) {
     this.updatedAt = new Date();
     next();
 });
-
-// Index untuk optimasi query
-AdminSchema.index({ username: 1 });
-AdminSchema.index({ isActive: 1 });
 
 module.exports = mongoose.model('Admin', AdminSchema, 'admins');
