@@ -1,4 +1,4 @@
-// src/components/ProtectedRoute.jsx - Updated dengan API verification
+// src/components/ProtectedRoute.jsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
@@ -16,18 +16,29 @@ const ProtectedRoute = ({ children }) => {
         try {
             const token = localStorage.getItem('adminToken');
 
+            console.log('ProtectedRoute: Checking token...', token ? 'Token exists' : 'No token');
+
             if (!token) {
+                console.log('ProtectedRoute: No token found');
                 setIsAuthenticated(false);
                 setIsLoading(false);
                 return;
             }
 
+            // Set axios header sebelum request
+            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+            console.log('ProtectedRoute: Verifying token with API...');
+
             // Verify token dengan API
             const response = await axios.get(`${API_BASE_URL}/api/auth/profile`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
-                }
+                },
+                timeout: 10000 // 10 second timeout
             });
+
+            console.log('ProtectedRoute: API response:', response.data);
 
             if (response.data.success) {
                 // Token valid, update user data jika perlu
@@ -41,15 +52,19 @@ const ProtectedRoute = ({ children }) => {
                     verifiedAt: new Date().toISOString()
                 }));
 
-                // Set axios default header
-                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
+                console.log('ProtectedRoute: Token verified successfully');
                 setIsAuthenticated(true);
             } else {
+                console.log('ProtectedRoute: Token verification failed - invalid response');
                 setIsAuthenticated(false);
             }
         } catch (error) {
-            console.error('Token verification failed:', error);
+            console.error('ProtectedRoute: Token verification failed:', {
+                message: error.message,
+                status: error.response?.status,
+                statusText: error.response?.statusText,
+                data: error.response?.data
+            });
 
             // Clear invalid token
             localStorage.removeItem('adminToken');
@@ -69,6 +84,7 @@ const ProtectedRoute = ({ children }) => {
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto"></div>
                     <p className="mt-4 text-gray-600">Memverifikasi akses...</p>
+                    <p className="mt-2 text-sm text-gray-500">Checking authentication...</p>
                 </div>
             </div>
         );
@@ -76,10 +92,12 @@ const ProtectedRoute = ({ children }) => {
 
     // Not authenticated, redirect to login
     if (isAuthenticated === false) {
+        console.log('ProtectedRoute: Redirecting to login');
         return <Navigate to="/admin/login" replace />;
     }
 
     // Authenticated, render the protected component
+    console.log('ProtectedRoute: Access granted');
     return children;
 };
 

@@ -1,4 +1,4 @@
-// src/pages/AdminLoginPage.jsx - Updated dengan API integration
+// src/pages/AdminLoginPage.jsx - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -17,31 +17,32 @@ const AdminLoginPage = () => {
 
     // Check if already logged in
     useEffect(() => {
-        const token = localStorage.getItem('adminToken');
-        if (token) {
-            // Verify token dengan API
-            verifyExistingToken(token);
-        }
-    }, []);
+        const checkExistingAuth = async () => {
+            const token = localStorage.getItem('adminToken');
+            if (token) {
+                try {
+                    // Set header untuk axios
+                    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-    const verifyExistingToken = async (token) => {
-        try {
-            const response = await axios.get(`${API_BASE_URL}/api/auth/profile`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
+                    // Verify token dengan API
+                    const response = await axios.get(`${API_BASE_URL}/api/auth/profile`);
+
+                    if (response.data.success) {
+                        // Token valid, redirect ke dashboard
+                        navigate('/admin/dashboard', { replace: true });
+                    }
+                } catch (error) {
+                    console.log('Token verification failed:', error);
+                    // Token tidak valid, hapus dari localStorage
+                    localStorage.removeItem('adminToken');
+                    localStorage.removeItem('adminUser');
+                    delete axios.defaults.headers.common['Authorization'];
                 }
-            });
-
-            if (response.data.success) {
-                // Token valid, redirect ke dashboard
-                navigate('/admin/dashboard');
             }
-        } catch (error) {
-            // Token tidak valid, hapus dari localStorage
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('adminUser');
-        }
-    };
+        };
+
+        checkExistingAuth();
+    }, [navigate]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -66,14 +67,20 @@ const AdminLoginPage = () => {
         }
 
         try {
+            console.log('Attempting login with:', { username: formData.username });
+
             // API call untuk login
             const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
                 username: formData.username.trim(),
                 password: formData.password
             });
 
+            console.log('Login response:', response.data);
+
             if (response.data.success) {
                 const { token, admin } = response.data.data;
+
+                console.log('Login successful, token received:', token ? 'Yes' : 'No');
 
                 // Store auth data in localStorage
                 localStorage.setItem('adminToken', token);
@@ -89,16 +96,30 @@ const AdminLoginPage = () => {
                 // Configure axios default header untuk request selanjutnya
                 axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-                // Redirect to admin dashboard
-                navigate('/admin/dashboard');
+                console.log('Auth data stored, redirecting to dashboard...');
+
+                // Small delay to ensure localStorage is written
+                setTimeout(() => {
+                    // Redirect to admin dashboard
+                    navigate('/admin/dashboard', { replace: true });
+                }, 100);
+            } else {
+                setError('Login gagal: ' + (response.data.message || 'Unknown error'));
             }
         } catch (err) {
-            console.error('Login error:', err);
+            console.error('Login error details:', {
+                message: err.message,
+                status: err.response?.status,
+                statusText: err.response?.statusText,
+                data: err.response?.data
+            });
 
             if (err.response && err.response.data) {
                 setError(err.response.data.message || 'Login gagal');
             } else if (err.code === 'ECONNREFUSED') {
                 setError('Tidak dapat terhubung ke server. Pastikan backend berjalan.');
+            } else if (err.code === 'NETWORK_ERROR') {
+                setError('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.');
             } else {
                 setError('Terjadi kesalahan saat login. Silakan coba lagi.');
             }
