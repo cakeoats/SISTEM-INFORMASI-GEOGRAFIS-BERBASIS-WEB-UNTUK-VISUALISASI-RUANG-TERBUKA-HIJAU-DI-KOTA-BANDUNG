@@ -473,18 +473,6 @@ const DataPage = () => {
                                     ` (Menampilkan ${filteredData.length} dari ${kecamatanData.length} kecamatan)`}
                             </p>
                         </div>
-
-                        {/* Quick Download Button di header tabel */}
-                        <button
-                            onClick={downloadToExcel}
-                            disabled={downloadLoading || (!kecamatanData.length)}
-                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center"
-                        >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
-                            </svg>
-                            Export
-                        </button>
                     </div>
                 </div>
 
@@ -663,7 +651,7 @@ const DataPage = () => {
                 </div>
 
                 <div className="bg-white rounded-lg shadow-md p-4">
-                    <h2 className="text-lg font-semibold mb-4">Informasi RTH & Quick Actions</h2>
+                    <h2 className="text-lg font-semibold mb-4">Informasi Ruang Terbuka Hijau</h2>
                     <p className="text-gray-700 mb-4">
                         Total luas RTH Publik di Kota Bandung saat ini adalah {persentaseRthAll.toFixed(2)}% dari luas wilayah kota.
                         Target yang ditetapkan dalam rencana tata ruang kota adalah 20% sesuai dengan standar nasional.
@@ -685,39 +673,6 @@ const DataPage = () => {
                                 ({(totalRthAll > 0 ? (totalLuasPemakamanAll / totalRthAll * 100) : 0).toFixed(1)}%)
                             </span>
                         </div>
-                    </div>
-
-                    {/* Quick Download Actions */}
-                    <div className="space-y-2">
-                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Download Options:</h4>
-
-                        <button
-                            onClick={() => {
-                                setSelectedCluster('all');
-                                setSearchTerm('');
-                                setTimeout(() => downloadToExcel(), 100);
-                            }}
-                            disabled={downloadLoading || (!kecamatanData.length)}
-                            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors flex items-center justify-center"
-                        >
-                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            Download Semua Data ({kecamatanData.length} item)
-                        </button>
-
-                        {(selectedCluster !== 'all' || searchTerm) && (
-                            <button
-                                onClick={downloadToExcel}
-                                disabled={downloadLoading || (!filteredData.length)}
-                                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors flex items-center justify-center"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
-                                </svg>
-                                Download Data Terfilter ({filteredData.length} item)
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>
