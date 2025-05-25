@@ -1,78 +1,56 @@
-// src/components/ProtectedRoute.jsx - FIXED VERSION
+// src/components/ProtectedRoute.jsx - SIMPLIFIED VERSION (tanpa verifikasi API)
 import React, { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import axios from 'axios';
-import { API_BASE_URL } from '../config';
 
 const ProtectedRoute = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(null); // null = loading, true/false = result
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        verifyAuthentication();
+        checkAuthentication();
     }, []);
 
-    const verifyAuthentication = async () => {
+    const checkAuthentication = () => {
         try {
             const token = localStorage.getItem('adminToken');
+            const adminUser = localStorage.getItem('adminUser');
 
-            console.log('ProtectedRoute: Checking token...', token ? 'Token exists' : 'No token');
+            console.log('ProtectedRoute: Checking authentication...', {
+                hasToken: !!token,
+                hasUser: !!adminUser
+            });
 
-            if (!token) {
-                console.log('ProtectedRoute: No token found');
+            if (!token || !adminUser) {
+                console.log('ProtectedRoute: No token or user data found');
                 setIsAuthenticated(false);
                 setIsLoading(false);
                 return;
             }
 
-            // Set axios header sebelum request
-            axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+            // Parse user data untuk validasi
+            try {
+                const userData = JSON.parse(adminUser);
+                console.log('ProtectedRoute: User data found:', userData.username);
 
-            console.log('ProtectedRoute: Verifying token with API...');
+                // Set axios default header untuk request selanjutnya
+                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-            // Verify token dengan API
-            const response = await axios.get(`${API_BASE_URL}/api/auth/profile`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                timeout: 10000 // 10 second timeout
-            });
-
-            console.log('ProtectedRoute: API response:', response.data);
-
-            if (response.data.success) {
-                // Token valid, update user data jika perlu
-                const adminData = response.data.data.admin;
-                const existingUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
-
-                // Update localStorage dengan data terbaru dari server
-                localStorage.setItem('adminUser', JSON.stringify({
-                    ...existingUser,
-                    ...adminData,
-                    verifiedAt: new Date().toISOString()
-                }));
-
-                console.log('ProtectedRoute: Token verified successfully');
+                // Token dan user data ada, anggap authenticated
                 setIsAuthenticated(true);
-            } else {
-                console.log('ProtectedRoute: Token verification failed - invalid response');
+                console.log('ProtectedRoute: Authentication successful');
+            } catch (parseError) {
+                console.error('ProtectedRoute: Error parsing user data:', parseError);
+                // Clear invalid data
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminUser');
                 setIsAuthenticated(false);
             }
+
+            setIsLoading(false);
         } catch (error) {
-            console.error('ProtectedRoute: Token verification failed:', {
-                message: error.message,
-                status: error.response?.status,
-                statusText: error.response?.statusText,
-                data: error.response?.data
-            });
-
-            // Clear invalid token
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('adminUser');
-            delete axios.defaults.headers.common['Authorization'];
-
+            console.error('ProtectedRoute: Error checking authentication:', error);
             setIsAuthenticated(false);
-        } finally {
             setIsLoading(false);
         }
     };
@@ -84,7 +62,6 @@ const ProtectedRoute = ({ children }) => {
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto"></div>
                     <p className="mt-4 text-gray-600">Memverifikasi akses...</p>
-                    <p className="mt-2 text-sm text-gray-500">Checking authentication...</p>
                 </div>
             </div>
         );
