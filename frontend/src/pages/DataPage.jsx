@@ -1,5 +1,6 @@
-// frontend/src/pages/DataPage.jsx - Updated untuk menggunakan endpoint public - LENGKAP
+// frontend/src/pages/DataPage.jsx - Updated untuk menggunakan endpoint public dengan fitur download Excel
 import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { publicAxios } from '../config';
 
 const DataPage = () => {
@@ -8,6 +9,7 @@ const DataPage = () => {
     const [filteredData, setFilteredData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [downloadLoading, setDownloadLoading] = useState(false);
 
     // State untuk filter dan pencarian
     const [searchTerm, setSearchTerm] = useState('');
@@ -101,6 +103,112 @@ const DataPage = () => {
             setFilteredData([...kecamatanData]);
         }
     }, [kecamatanData, searchTerm, selectedCluster, sortConfig]);
+
+    // Fungsi untuk download data ke Excel
+    const downloadToExcel = () => {
+        try {
+            setDownloadLoading(true);
+
+            // Siapkan data untuk export (gunakan filtered data atau semua data tergantung pilihan)
+            const dataToExport = filteredData.length > 0 ? filteredData : kecamatanData;
+
+            if (dataToExport.length === 0) {
+                alert('Tidak ada data untuk didownload');
+                setDownloadLoading(false);
+                return;
+            }
+
+            // Format data untuk Excel
+            const excelData = dataToExport.map((item, index) => ({
+                'No': index + 1,
+                'Kecamatan': item.kecamatan,
+                'Luas Taman (ha)': parseFloat(item.luas_taman).toFixed(3),
+                'Luas Pemakaman (ha)': parseFloat(item.luas_pemakaman).toFixed(3),
+                'Total RTH (ha)': parseFloat(item.total_rth).toFixed(3),
+                'Luas Kecamatan (ha)': parseFloat(item.luas_kecamatan).toFixed(0),
+                'Persentase RTH (%)': item.luas_kecamatan > 0 ?
+                    ((item.total_rth / item.luas_kecamatan) * 100).toFixed(2) : '0.00',
+                'Cluster': item.cluster
+            }));
+
+            // Tambahkan baris total di akhir
+            const totalRow = {
+                'No': '',
+                'Kecamatan': 'TOTAL',
+                'Luas Taman (ha)': safeReduce(dataToExport, 'luas_taman').toFixed(3),
+                'Luas Pemakaman (ha)': safeReduce(dataToExport, 'luas_pemakaman').toFixed(3),
+                'Total RTH (ha)': safeReduce(dataToExport, 'total_rth').toFixed(3),
+                'Luas Kecamatan (ha)': safeReduce(dataToExport, 'luas_kecamatan').toFixed(0),
+                'Persentase RTH (%)': safeReduce(dataToExport, 'luas_kecamatan') > 0 ?
+                    ((safeReduce(dataToExport, 'total_rth') / safeReduce(dataToExport, 'luas_kecamatan')) * 100).toFixed(2) : '0.00',
+                'Cluster': ''
+            };
+
+            excelData.push(totalRow);
+
+            // Buat workbook dan worksheet
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+            // Set lebar kolom
+            const columnWidths = [
+                { wch: 5 },  // No
+                { wch: 20 }, // Kecamatan
+                { wch: 18 }, // Luas Taman
+                { wch: 20 }, // Luas Pemakaman
+                { wch: 15 }, // Total RTH
+                { wch: 20 }, // Luas Kecamatan
+                { wch: 18 }, // Persentase RTH
+                { wch: 15 }  // Cluster
+            ];
+            worksheet['!cols'] = columnWidths;
+
+            // Style untuk header (bold)
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            for (let col = range.s.c; col <= range.e.c; col++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+                if (worksheet[cellAddress]) {
+                    worksheet[cellAddress].s = {
+                        font: { bold: true },
+                        fill: { fgColor: { rgb: "CCCCCC" } }
+                    };
+                }
+            }
+
+            // Style untuk baris total (bold)
+            const totalRowIndex = excelData.length - 1;
+            for (let col = range.s.c; col <= range.e.c; col++) {
+                const cellAddress = XLSX.utils.encode_cell({ r: totalRowIndex, c: col });
+                if (worksheet[cellAddress]) {
+                    worksheet[cellAddress].s = {
+                        font: { bold: true },
+                        fill: { fgColor: { rgb: "FFFFCC" } }
+                    };
+                }
+            }
+
+            // Tambahkan worksheet ke workbook
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Data RTH Bandung');
+
+            // Generate filename dengan timestamp
+            const now = new Date();
+            const timestamp = now.toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            const filterInfo = selectedCluster !== 'all' || searchTerm ? '_filtered' : '';
+            const filename = `Data_RTH_Bandung_${timestamp}${filterInfo}.xlsx`;
+
+            // Download file
+            XLSX.writeFile(workbook, filename);
+
+            // Tampilkan notifikasi sukses
+            alert(`Data berhasil didownload: ${filename}\n\nTotal data: ${dataToExport.length - 1} kecamatan`);
+
+        } catch (error) {
+            console.error('Error downloading Excel:', error);
+            alert('Gagal mendownload data. Silakan coba lagi.');
+        } finally {
+            setDownloadLoading(false);
+        }
+    };
 
     // Fungsi untuk mengganti pengurutan
     const requestSort = (key) => {
@@ -238,7 +346,7 @@ const DataPage = () => {
 
             {/* Filter dan Pencarian */}
             <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-3 gap-4">
                     {/* Search */}
                     <div>
                         <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
@@ -278,6 +386,35 @@ const DataPage = () => {
                             ))}
                         </select>
                     </div>
+
+                    {/* Download Button */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Download Data
+                        </label>
+                        <button
+                            onClick={downloadToExcel}
+                            disabled={downloadLoading || (!kecamatanData.length)}
+                            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                        >
+                            {downloadLoading ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Downloading...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Download Excel
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Menampilkan status filter yang aktif */}
@@ -316,6 +453,9 @@ const DataPage = () => {
                             >
                                 Reset Semua Filter
                             </button>
+                            <span className="text-blue-600 text-xs">
+                                Download akan menggunakan data yang sedang ditampilkan ({filteredData.length} item)
+                            </span>
                         </div>
                     </div>
                 )}
@@ -324,12 +464,28 @@ const DataPage = () => {
             {/* Tabel data RTH */}
             <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
                 <div className="p-4 border-b">
-                    <h2 className="text-xl font-semibold">Data Ruang Terbuka Hijau Publik Kota Bandung</h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                        Data luas taman, pemakaman dan ruang terbuka hijau di setiap kecamatan
-                        {filteredData.length !== kecamatanData.length && kecamatanData.length > 0 &&
-                            ` (Menampilkan ${filteredData.length} dari ${kecamatanData.length} kecamatan)`}
-                    </p>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-xl font-semibold">Data Ruang Terbuka Hijau Publik Kota Bandung</h2>
+                            <p className="text-sm text-gray-600 mt-1">
+                                Data luas taman, pemakaman dan ruang terbuka hijau di setiap kecamatan
+                                {filteredData.length !== kecamatanData.length && kecamatanData.length > 0 &&
+                                    ` (Menampilkan ${filteredData.length} dari ${kecamatanData.length} kecamatan)`}
+                            </p>
+                        </div>
+
+                        {/* Quick Download Button di header tabel */}
+                        <button
+                            onClick={downloadToExcel}
+                            disabled={downloadLoading || (!kecamatanData.length)}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center"
+                        >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                            </svg>
+                            Export
+                        </button>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -450,6 +606,26 @@ const DataPage = () => {
                 </div>
             </div>
 
+            {/* Download Information Section */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                    <svg className="h-5 w-5 text-blue-600 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <h3 className="text-lg font-semibold text-blue-800 mb-2">Informasi Download Excel</h3>
+                        <div className="text-sm text-blue-700 space-y-1">
+                            <p>• File Excel akan berisi semua data yang ditampilkan di tabel saat ini</p>
+                            <p>• Jika Anda menggunakan filter, hanya data yang sesuai filter yang akan didownload</p>
+                            <p>• File akan mencakup: No, Kecamatan, Luas Taman, Luas Pemakaman, Total RTH, Luas Kecamatan, Persentase RTH, dan Cluster</p>
+                            <p>• Baris total akan ditambahkan secara otomatis di akhir file</p>
+                            <p>• Nama file akan mencakup timestamp untuk menghindari duplikasi</p>
+                            <p>• Format file: <code className="bg-blue-100 px-1 rounded">Data_RTH_Bandung_2025-05-26T10-30-00_filtered.xlsx</code></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Informasi tambahan */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-lg shadow-md p-4">
@@ -487,13 +663,13 @@ const DataPage = () => {
                 </div>
 
                 <div className="bg-white rounded-lg shadow-md p-4">
-                    <h2 className="text-lg font-semibold mb-4">Informasi RTH</h2>
+                    <h2 className="text-lg font-semibold mb-4">Informasi RTH & Quick Actions</h2>
                     <p className="text-gray-700 mb-4">
                         Total luas RTH Publik di Kota Bandung saat ini adalah {persentaseRthAll.toFixed(2)}% dari luas wilayah kota.
                         Target yang ditetapkan dalam rencana tata ruang kota adalah 20% sesuai dengan standar nasional.
                     </p>
 
-                    <div className="bg-green-50 p-3 rounded-lg">
+                    <div className="bg-green-50 p-3 rounded-lg mb-4">
                         <h3 className="text-md font-semibold text-green-700 mb-2">Komposisi RTH</h3>
                         <div className="flex justify-between text-sm mb-1">
                             <span className="text-gray-600">Taman</span>
@@ -510,8 +686,84 @@ const DataPage = () => {
                             </span>
                         </div>
                     </div>
+
+                    {/* Quick Download Actions */}
+                    <div className="space-y-2">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Download Options:</h4>
+
+                        <button
+                            onClick={() => {
+                                setSelectedCluster('all');
+                                setSearchTerm('');
+                                setTimeout(() => downloadToExcel(), 100);
+                            }}
+                            disabled={downloadLoading || (!kecamatanData.length)}
+                            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors flex items-center justify-center"
+                        >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Download Semua Data ({kecamatanData.length} item)
+                        </button>
+
+                        {(selectedCluster !== 'all' || searchTerm) && (
+                            <button
+                                onClick={downloadToExcel}
+                                disabled={downloadLoading || (!filteredData.length)}
+                                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white text-sm font-medium py-2 px-3 rounded-md transition-colors flex items-center justify-center"
+                            >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                                </svg>
+                                Download Data Terfilter ({filteredData.length} item)
+                            </button>
+                        )}
+
+                        {/* Download by cluster shortcuts */}
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                            <h5 className="text-xs font-semibold text-gray-600 mb-2">Download by Cluster:</h5>
+                            <div className="grid grid-cols-1 gap-1">
+                                {clusters.filter(c => c !== 'all').map((cluster) => {
+                                    const count = kecamatanData.filter(item => item.cluster === cluster).length;
+                                    const clusterColor = getClusterColor(cluster);
+
+                                    return (
+                                        <button
+                                            key={cluster}
+                                            onClick={() => {
+                                                setSelectedCluster(cluster);
+                                                setSearchTerm('');
+                                                setTimeout(() => downloadToExcel(), 100);
+                                            }}
+                                            disabled={downloadLoading || count === 0}
+                                            className={`w-full text-white text-xs font-medium py-1.5 px-2 rounded transition-colors flex items-center justify-between ${clusterColor.bg} hover:opacity-80 disabled:bg-gray-400`}
+                                        >
+                                            <span>{cluster}</span>
+                                            <span>({count})</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            {/* Download Status Info */}
+            {downloadLoading && (
+                <div className="fixed bottom-4 right-4 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-50">
+                    <div className="flex items-center">
+                        <svg className="animate-spin h-5 w-5 text-green-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <div>
+                            <p className="font-medium text-gray-800">Sedang memproses download...</p>
+                            <p className="text-sm text-gray-600">Mohon tunggu sebentar</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
