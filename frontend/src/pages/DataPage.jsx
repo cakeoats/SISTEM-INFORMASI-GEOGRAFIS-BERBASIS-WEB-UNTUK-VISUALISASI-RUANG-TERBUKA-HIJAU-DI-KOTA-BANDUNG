@@ -718,33 +718,6 @@ const DataPage = () => {
                                 Download Data Terfilter ({filteredData.length} item)
                             </button>
                         )}
-
-                        {/* Download by cluster shortcuts */}
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                            <h5 className="text-xs font-semibold text-gray-600 mb-2">Download by Cluster:</h5>
-                            <div className="grid grid-cols-1 gap-1">
-                                {clusters.filter(c => c !== 'all').map((cluster) => {
-                                    const count = kecamatanData.filter(item => item.cluster === cluster).length;
-                                    const clusterColor = getClusterColor(cluster);
-
-                                    return (
-                                        <button
-                                            key={cluster}
-                                            onClick={() => {
-                                                setSelectedCluster(cluster);
-                                                setSearchTerm('');
-                                                setTimeout(() => downloadToExcel(), 100);
-                                            }}
-                                            disabled={downloadLoading || count === 0}
-                                            className={`w-full text-white text-xs font-medium py-1.5 px-2 rounded transition-colors flex items-center justify-between ${clusterColor.bg} hover:opacity-80 disabled:bg-gray-400`}
-                                        >
-                                            <span>{cluster}</span>
-                                            <span>({count})</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
