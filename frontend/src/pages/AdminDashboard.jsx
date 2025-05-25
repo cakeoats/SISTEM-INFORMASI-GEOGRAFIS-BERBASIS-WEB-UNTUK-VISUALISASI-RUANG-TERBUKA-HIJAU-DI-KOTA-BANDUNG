@@ -1,4 +1,4 @@
-// frontend/src/pages/AdminDashboard.jsx - Updated dengan tab navigation dan RTH management
+// frontend/src/pages/AdminDashboard.jsx - SIMPLIFIED VERSION
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -10,48 +10,28 @@ const AdminDashboard = () => {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('overview'); // overview, rth-management
+    const [activeTab, setActiveTab] = useState('overview');
     const navigate = useNavigate();
 
     useEffect(() => {
-        fetchAdminData();
+        // Load admin data from localStorage
+        const adminUser = localStorage.getItem('adminUser');
+        if (adminUser) {
+            try {
+                const userData = JSON.parse(adminUser);
+                setAdminData(userData);
+            } catch (e) {
+                console.error('Error parsing admin user data:', e);
+            }
+        }
+
         fetchSystemStats();
     }, []);
 
-    const fetchAdminData = async () => {
-        try {
-            const token = localStorage.getItem('adminToken');
-            if (!token) {
-                navigate('/admin/login');
-                return;
-            }
-
-            const response = await axios.get(`${API_BASE_URL}/api/auth/profile`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (response.data.success) {
-                setAdminData(response.data.data.admin);
-            }
-        } catch (error) {
-            console.error('Error fetching admin data:', error);
-            setError('Gagal memuat data admin');
-        }
-    };
-
     const fetchSystemStats = async () => {
         try {
-            const token = localStorage.getItem('adminToken');
-
-            // Fetch RTH statistics
-            const rthResponse = await axios.get(`${API_BASE_URL}/api/rth-kecamatan`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
+            // Fetch RTH statistics using public endpoint (no auth needed)
+            const rthResponse = await axios.get(`${API_BASE_URL}/api/rth-kecamatan/public`);
             const rthData = rthResponse.data;
 
             if (Array.isArray(rthData)) {
@@ -82,30 +62,11 @@ const AdminDashboard = () => {
         }
     };
 
-    const handleLogout = async () => {
-        try {
-            const token = localStorage.getItem('adminToken');
-
-            // Call logout API
-            if (token) {
-                await axios.post(`${API_BASE_URL}/api/auth/logout`, {}, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-            }
-        } catch (error) {
-            console.error('Logout API error:', error);
-            // Continue with logout even if API fails
-        } finally {
-            // Clear authentication data
-            localStorage.removeItem('adminToken');
-            localStorage.removeItem('adminUser');
-            delete axios.defaults.headers.common['Authorization'];
-
-            // Redirect to login
-            navigate('/admin/login');
-        }
+    const handleLogout = () => {
+        // Simple logout - clear localStorage
+        localStorage.removeItem('isAdminLoggedIn');
+        localStorage.removeItem('adminUser');
+        navigate('/admin/login');
     };
 
     const formatDate = (dateString) => {
@@ -164,8 +125,8 @@ const AdminDashboard = () => {
                         <button
                             onClick={() => setActiveTab('overview')}
                             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
-                                    ? 'border-green-500 text-green-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                ? 'border-green-500 text-green-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
                             Overview
@@ -173,8 +134,8 @@ const AdminDashboard = () => {
                         <button
                             onClick={() => setActiveTab('rth-management')}
                             className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'rth-management'
-                                    ? 'border-green-500 text-green-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                ? 'border-green-500 text-green-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
                             Manajemen Data RTH
@@ -268,76 +229,6 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
                         )}
-
-                        {/* Admin Info and Cluster Distribution */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-4">Informasi Admin</h3>
-                                {adminData ? (
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Username:</span>
-                                            <span className="font-medium">{adminData.username}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Email:</span>
-                                            <span className="font-medium">{adminData.email || 'Tidak tersedia'}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Role:</span>
-                                            <span className="font-medium capitalize">{adminData.role}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Last Login:</span>
-                                            <span className="font-medium text-sm">{formatDate(adminData.lastLogin)}</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-500">Memuat informasi admin...</p>
-                                )}
-                            </div>
-
-                            {/* Cluster Distribution */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-4">Distribusi Cluster RTH</h3>
-                                {stats?.clusterDistribution ? (
-                                    <div className="space-y-3">
-                                        {Object.entries(stats.clusterDistribution).map(([cluster, count]) => {
-                                            const getClusterInfo = (cluster) => {
-                                                switch (cluster) {
-                                                    case 'cluster_0':
-                                                        return { name: 'Cluster 0 (RTH Rendah)', color: 'bg-red-500' };
-                                                    case 'cluster_1':
-                                                        return { name: 'Cluster 1 (RTH Menengah)', color: 'bg-yellow-500' };
-                                                    case 'cluster_2':
-                                                        return { name: 'Cluster 2 (RTH Tinggi)', color: 'bg-green-500' };
-                                                    default:
-                                                        return { name: cluster, color: 'bg-gray-500' };
-                                                }
-                                            };
-
-                                            const clusterInfo = getClusterInfo(cluster);
-                                            const percentage = stats.totalKecamatan > 0 ? (count / stats.totalKecamatan * 100).toFixed(1) : 0;
-
-                                            return (
-                                                <div key={cluster} className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <div className={`w-3 h-3 rounded-full mr-3 ${clusterInfo.color}`}></div>
-                                                        <span className="text-sm font-medium">{clusterInfo.name}</span>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <span className="text-sm font-bold">{count}</span>
-                                                        <span className="text-xs text-gray-500 ml-1">({percentage}%)</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-500">Memuat data cluster...</p>
-                                )}
-                            </div>
-                        </div>
 
                         {/* Quick Actions */}
                         <div className="bg-white rounded-lg shadow-md p-6">

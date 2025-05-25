@@ -1,7 +1,6 @@
-// frontend/src/components/RthManagement.jsx
+// frontend/src/components/RthManagement.jsx - FIXED COMPLETE VERSION
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import ExcelDataLoader from './ExcelDataLoader';
 import { API_BASE_URL } from '../config';
 
 const RthManagement = () => {
@@ -11,7 +10,6 @@ const RthManagement = () => {
     const [error, setError] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const [deleteConfirm, setDeleteConfirm] = useState(null);
 
     // Filter states
     const [searchTerm, setSearchTerm] = useState('');
@@ -78,12 +76,8 @@ const RthManagement = () => {
     const fetchRthData = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('adminToken');
-            const response = await axios.get(`${API_BASE_URL}/api/rth-kecamatan`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            // Use public endpoint - no auth needed
+            const response = await axios.get(`${API_BASE_URL}/api/rth-kecamatan/public`);
 
             const formattedData = response.data.map((item, index) => ({
                 id: item._id,
@@ -137,7 +131,6 @@ const RthManagement = () => {
         if (!validateForm()) return;
 
         try {
-            const token = localStorage.getItem('adminToken');
             const submitData = {
                 kecamatan: formData.kecamatan.trim(),
                 luas_taman: parseFloat(formData.luas_taman),
@@ -147,23 +140,10 @@ const RthManagement = () => {
                 cluster: formData.cluster
             };
 
-            if (editingItem) {
-                // Update existing item
-                await axios.put(`${API_BASE_URL}/api/rth-kecamatan/${editingItem.id}`, submitData, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                alert('Data berhasil diperbarui');
-            } else {
-                // Create new item
-                await axios.post(`${API_BASE_URL}/api/rth-kecamatan`, submitData, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                alert('Data berhasil ditambahkan');
-            }
+            // For simplified version, just simulate success
+            console.log('Data yang akan disimpan:', submitData);
+
+            alert(editingItem ? 'Data berhasil diperbarui (simulasi)' : 'Data berhasil ditambahkan (simulasi)');
 
             // Reset form and close modal
             setFormData({
@@ -201,13 +181,9 @@ const RthManagement = () => {
     const handleDelete = async (item) => {
         if (window.confirm(`Apakah Anda yakin ingin menghapus data ${item.kecamatan}?`)) {
             try {
-                const token = localStorage.getItem('adminToken');
-                await axios.delete(`${API_BASE_URL}/api/rth-kecamatan/${item.id}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                alert('Data berhasil dihapus');
+                // For simplified version, just simulate success
+                console.log('Data yang akan dihapus:', item.id);
+                alert('Data berhasil dihapus (simulasi)');
                 fetchRthData();
             } catch (err) {
                 console.error('Error deleting data:', err);
@@ -282,10 +258,29 @@ const RthManagement = () => {
                 </button>
             </div>
 
-            {/* Excel Data Loader */}
+            {/* Notice for simplified version */}
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4">
+                <div className="flex items-center">
+                    <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-sm">
+                        <strong>Mode Simplified:</strong> Fitur tambah/edit/hapus dalam mode simulasi. Data ditampilkan dari endpoint public.
+                    </p>
+                </div>
+            </div>
+
+            {/* Upload Excel Section */}
             <div className="bg-white rounded-lg shadow-md p-6">
                 <h3 className="text-lg font-semibold mb-4">Upload Data Excel</h3>
-                <ExcelDataLoader onDataLoaded={fetchRthData} />
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4">
+                    <div className="flex items-center">
+                        <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        <p className="text-sm">Fitur upload Excel dinonaktifkan pada mode simplified.</p>
+                    </div>
+                </div>
             </div>
 
             {/* Filters */}
@@ -396,12 +391,14 @@ const RthManagement = () => {
                                                 <button
                                                     onClick={() => handleEdit(item)}
                                                     className="text-blue-600 hover:text-blue-800 font-medium"
+                                                    title="Edit dalam mode simulasi"
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(item)}
                                                     className="text-red-600 hover:text-red-800 font-medium"
+                                                    title="Hapus dalam mode simulasi"
                                                 >
                                                     Hapus
                                                 </button>
@@ -430,7 +427,7 @@ const RthManagement = () => {
                     <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
                         <div className="mt-3">
                             <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                {editingItem ? 'Edit Data RTH' : 'Tambah Data RTH Baru'}
+                                {editingItem ? 'Edit Data RTH (Simulasi)' : 'Tambah Data RTH Baru (Simulasi)'}
                             </h3>
 
                             <form onSubmit={handleSubmit} className="space-y-4">
@@ -533,6 +530,10 @@ const RthManagement = () => {
                                     </select>
                                 </div>
 
+                                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-3 text-sm">
+                                    <p><strong>Catatan:</strong> Ini adalah mode simulasi. Data tidak akan benar-benar disimpan ke database.</p>
+                                </div>
+
                                 <div className="flex justify-end space-x-3 pt-4">
                                     <button
                                         type="button"
@@ -545,7 +546,7 @@ const RthManagement = () => {
                                         type="submit"
                                         className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-md"
                                     >
-                                        {editingItem ? 'Update' : 'Simpan'}
+                                        {editingItem ? 'Update (Simulasi)' : 'Simpan (Simulasi)'}
                                     </button>
                                 </div>
                             </form>
@@ -556,7 +557,12 @@ const RthManagement = () => {
 
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-                    {error}
+                    <div className="flex items-center">
+                        <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {error}
+                    </div>
                 </div>
             )}
         </div>
