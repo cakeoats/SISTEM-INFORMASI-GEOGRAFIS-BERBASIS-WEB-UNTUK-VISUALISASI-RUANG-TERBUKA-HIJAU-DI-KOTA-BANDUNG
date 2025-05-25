@@ -36,14 +36,6 @@ exports.loginAdmin = async (req, res) => {
             });
         }
 
-        // Cek apakah admin aktif
-        if (!admin.isActive) {
-            return res.status(401).json({
-                success: false,
-                message: 'Akun admin tidak aktif'
-            });
-        }
-
         // Verify password
         const isPasswordValid = await admin.comparePassword(password);
 
