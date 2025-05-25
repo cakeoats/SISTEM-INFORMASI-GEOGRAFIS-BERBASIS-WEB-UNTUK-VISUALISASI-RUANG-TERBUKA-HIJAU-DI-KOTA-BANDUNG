@@ -1,6 +1,7 @@
-// frontend/src/components/RthManagement.jsx - FIXED COMPLETE VERSION
+// frontend/src/components/RthManagement.jsx - FULL CRUD RESTORED
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import ExcelDataLoader from './ExcelDataLoader';
 import { API_BASE_URL } from '../config';
 
 const RthManagement = () => {
@@ -10,6 +11,7 @@ const RthManagement = () => {
     const [error, setError] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
+    const [saveLoading, setSaveLoading] = useState(false);
 
     // Filter states
     const [searchTerm, setSearchTerm] = useState('');
@@ -76,8 +78,29 @@ const RthManagement = () => {
     const fetchRthData = async () => {
         try {
             setLoading(true);
-            // Use public endpoint - no auth needed
-            const response = await axios.get(`${API_BASE_URL}/api/rth-kecamatan/public`);
+            setError(null);
+
+            // Try authenticated endpoint first, fallback to public if auth fails
+            let response;
+            try {
+                // Check if we have authentication
+                const isLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+
+                if (isLoggedIn) {
+                    // Try to use authenticated endpoint with a simple token approach
+                    response = await axios.get(`${API_BASE_URL}/api/rth-kecamatan`, {
+                        headers: {
+                            'Authorization': 'Bearer simple-admin-token'
+                        }
+                    });
+                } else {
+                    throw new Error('Not authenticated');
+                }
+            } catch (authError) {
+                console.log('Auth failed, using public endpoint:', authError.message);
+                // Fallback to public endpoint
+                response = await axios.get(`${API_BASE_URL}/api/rth-kecamatan/public`);
+            }
 
             const formattedData = response.data.map((item, index) => ({
                 id: item._id,
@@ -91,7 +114,6 @@ const RthManagement = () => {
             }));
 
             setRthData(formattedData);
-            setError(null);
         } catch (err) {
             console.error('Error fetching RTH data:', err);
             setError('Gagal mengambil data RTH: ' + (err.response?.data?.message || err.message));
@@ -130,6 +152,8 @@ const RthManagement = () => {
 
         if (!validateForm()) return;
 
+        setSaveLoading(true);
+
         try {
             const submitData = {
                 kecamatan: formData.kecamatan.trim(),
@@ -140,10 +164,45 @@ const RthManagement = () => {
                 cluster: formData.cluster
             };
 
-            // For simplified version, just simulate success
-            console.log('Data yang akan disimpan:', submitData);
+            console.log('Submitting data:', submitData);
 
-            alert(editingItem ? 'Data berhasil diperbarui (simulasi)' : 'Data berhasil ditambahkan (simulasi)');
+            // Check authentication
+            const isLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+            if (!isLoggedIn) {
+                alert('Anda harus login sebagai admin untuk melakukan operasi ini');
+                return;
+            }
+
+            const headers = {
+                'Authorization': 'Bearer simple-admin-token',
+                'Content-Type': 'application/json'
+            };
+
+            if (editingItem) {
+                // Update existing item
+                try {
+                    await axios.put(`${API_BASE_URL}/api/rth-kecamatan/${editingItem.id}`, submitData, { headers });
+                    alert('Data berhasil diperbarui');
+                } catch (error) {
+                    if (error.response?.status === 401) {
+                        alert('Tidak memiliki akses untuk mengupdate data');
+                    } else {
+                        throw error;
+                    }
+                }
+            } else {
+                // Create new item
+                try {
+                    await axios.post(`${API_BASE_URL}/api/rth-kecamatan`, submitData, { headers });
+                    alert('Data berhasil ditambahkan');
+                } catch (error) {
+                    if (error.response?.status === 401) {
+                        alert('Tidak memiliki akses untuk menambah data');
+                    } else {
+                        throw error;
+                    }
+                }
+            }
 
             // Reset form and close modal
             setFormData({
@@ -159,9 +218,12 @@ const RthManagement = () => {
 
             // Refresh data
             fetchRthData();
+
         } catch (err) {
             console.error('Error saving data:', err);
             alert('Gagal menyimpan data: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setSaveLoading(false);
         }
     };
 
@@ -179,16 +241,36 @@ const RthManagement = () => {
     };
 
     const handleDelete = async (item) => {
-        if (window.confirm(`Apakah Anda yakin ingin menghapus data ${item.kecamatan}?`)) {
-            try {
-                // For simplified version, just simulate success
-                console.log('Data yang akan dihapus:', item.id);
-                alert('Data berhasil dihapus (simulasi)');
-                fetchRthData();
-            } catch (err) {
-                console.error('Error deleting data:', err);
-                alert('Gagal menghapus data: ' + (err.response?.data?.message || err.message));
+        if (!window.confirm(`Apakah Anda yakin ingin menghapus data ${item.kecamatan}?`)) {
+            return;
+        }
+
+        try {
+            // Check authentication
+            const isLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+            if (!isLoggedIn) {
+                alert('Anda harus login sebagai admin untuk melakukan operasi ini');
+                return;
             }
+
+            const headers = {
+                'Authorization': 'Bearer simple-admin-token'
+            };
+
+            try {
+                await axios.delete(`${API_BASE_URL}/api/rth-kecamatan/${item.id}`, { headers });
+                alert('Data berhasil dihapus');
+                fetchRthData();
+            } catch (error) {
+                if (error.response?.status === 401) {
+                    alert('Tidak memiliki akses untuk menghapus data');
+                } else {
+                    throw error;
+                }
+            }
+        } catch (err) {
+            console.error('Error deleting data:', err);
+            alert('Gagal menghapus data: ' + (err.response?.data?.message || err.message));
         }
     };
 
@@ -223,6 +305,9 @@ const RthManagement = () => {
         return ['all', ...uniqueClusters];
     };
 
+    // Check if user is authenticated
+    const isAuthenticated = localStorage.getItem('isAdminLoggedIn') === 'true';
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
@@ -241,6 +326,10 @@ const RthManagement = () => {
                 <h2 className="text-2xl font-bold text-gray-900">Manajemen Data RTH</h2>
                 <button
                     onClick={() => {
+                        if (!isAuthenticated) {
+                            alert('Anda harus login sebagai admin untuk menambah data');
+                            return;
+                        }
                         setEditingItem(null);
                         setFormData({
                             kecamatan: '',
@@ -252,36 +341,48 @@ const RthManagement = () => {
                         });
                         setShowModal(true);
                     }}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
+                    className={`px-4 py-2 rounded-lg font-medium ${isAuthenticated
+                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                            : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                        }`}
+                    disabled={!isAuthenticated}
                 >
                     + Tambah Data RTH
                 </button>
             </div>
 
-            {/* Notice for simplified version */}
-            <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4">
-                <div className="flex items-center">
-                    <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <p className="text-sm">
-                        <strong>Mode Simplified:</strong> Fitur tambah/edit/hapus dalam mode simulasi. Data ditampilkan dari endpoint public.
-                    </p>
+            {/* Authentication Status */}
+            {isAuthenticated ? (
+                <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-4">
+                    <div className="flex items-center">
+                        <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p className="text-sm">
+                            <strong>Mode Admin:</strong> Semua fitur CRUD aktif. Anda dapat menambah, mengedit, dan menghapus data.
+                        </p>
+                    </div>
                 </div>
-            </div>
-
-            {/* Upload Excel Section */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold mb-4">Upload Data Excel</h3>
+            ) : (
                 <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4">
                     <div className="flex items-center">
                         <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                         </svg>
-                        <p className="text-sm">Fitur upload Excel dinonaktifkan pada mode simplified.</p>
+                        <p className="text-sm">
+                            <strong>Mode Read-Only:</strong> Login sebagai admin untuk mengakses fitur CRUD.
+                        </p>
                     </div>
                 </div>
-            </div>
+            )}
+
+            {/* Excel Data Loader - Only for authenticated users */}
+            {isAuthenticated && (
+                <div className="bg-white rounded-lg shadow-md p-6">
+                    <h3 className="text-lg font-semibold mb-4">Upload Data Excel</h3>
+                    <ExcelDataLoader onDataLoaded={fetchRthData} />
+                </div>
+            )}
 
             {/* Filters */}
             <div className="bg-white rounded-lg shadow-md p-4">
@@ -390,15 +491,23 @@ const RthManagement = () => {
                                             <div className="flex space-x-2">
                                                 <button
                                                     onClick={() => handleEdit(item)}
-                                                    className="text-blue-600 hover:text-blue-800 font-medium"
-                                                    title="Edit dalam mode simulasi"
+                                                    className={`font-medium ${isAuthenticated
+                                                            ? 'text-blue-600 hover:text-blue-800'
+                                                            : 'text-gray-400 cursor-not-allowed'
+                                                        }`}
+                                                    disabled={!isAuthenticated}
+                                                    title={isAuthenticated ? 'Edit data' : 'Login sebagai admin untuk mengedit'}
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(item)}
-                                                    className="text-red-600 hover:text-red-800 font-medium"
-                                                    title="Hapus dalam mode simulasi"
+                                                    className={`font-medium ${isAuthenticated
+                                                            ? 'text-red-600 hover:text-red-800'
+                                                            : 'text-gray-400 cursor-not-allowed'
+                                                        }`}
+                                                    disabled={!isAuthenticated}
+                                                    title={isAuthenticated ? 'Hapus data' : 'Login sebagai admin untuk menghapus'}
                                                 >
                                                     Hapus
                                                 </button>
@@ -427,7 +536,7 @@ const RthManagement = () => {
                     <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
                         <div className="mt-3">
                             <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                {editingItem ? 'Edit Data RTH (Simulasi)' : 'Tambah Data RTH Baru (Simulasi)'}
+                                {editingItem ? 'Edit Data RTH' : 'Tambah Data RTH Baru'}
                             </h3>
 
                             <form onSubmit={handleSubmit} className="space-y-4">
@@ -443,6 +552,7 @@ const RthManagement = () => {
                                         className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
                                         placeholder="Masukkan nama kecamatan"
                                         required
+                                        disabled={saveLoading}
                                     />
                                 </div>
 
@@ -460,6 +570,7 @@ const RthManagement = () => {
                                             className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
                                             placeholder="0.000"
                                             required
+                                            disabled={saveLoading}
                                         />
                                     </div>
 
@@ -476,6 +587,7 @@ const RthManagement = () => {
                                             className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
                                             placeholder="0.000"
                                             required
+                                            disabled={saveLoading}
                                         />
                                     </div>
                                 </div>
@@ -494,6 +606,7 @@ const RthManagement = () => {
                                             className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
                                             placeholder="0.000"
                                             required
+                                            disabled={saveLoading}
                                         />
                                     </div>
 
@@ -510,6 +623,7 @@ const RthManagement = () => {
                                             className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
                                             placeholder="0.000"
                                             required
+                                            disabled={saveLoading}
                                         />
                                     </div>
                                 </div>
@@ -523,6 +637,7 @@ const RthManagement = () => {
                                         value={formData.cluster}
                                         onChange={handleInputChange}
                                         className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                                        disabled={saveLoading}
                                     >
                                         <option value="cluster_0">Cluster 0 (RTH Rendah)</option>
                                         <option value="cluster_1">Cluster 1 (RTH Menengah)</option>
@@ -530,23 +645,31 @@ const RthManagement = () => {
                                     </select>
                                 </div>
 
-                                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-3 text-sm">
-                                    <p><strong>Catatan:</strong> Ini adalah mode simulasi. Data tidak akan benar-benar disimpan ke database.</p>
-                                </div>
-
                                 <div className="flex justify-end space-x-3 pt-4">
                                     <button
                                         type="button"
                                         onClick={() => setShowModal(false)}
                                         className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md"
+                                        disabled={saveLoading}
                                     >
                                         Batal
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-md"
+                                        className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled={saveLoading}
                                     >
-                                        {editingItem ? 'Update (Simulasi)' : 'Simpan (Simulasi)'}
+                                        {saveLoading ? (
+                                            <div className="flex items-center">
+                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Menyimpan...
+                                            </div>
+                                        ) : (
+                                            editingItem ? 'Update' : 'Simpan'
+                                        )}
                                     </button>
                                 </div>
                             </form>

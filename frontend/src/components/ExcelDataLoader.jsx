@@ -1,4 +1,4 @@
-// frontend/src/components/ExcelDataLoader.jsx - Updated untuk admin dashboard
+// frontend/src/components/ExcelDataLoader.jsx - FULL CRUD SUPPORT
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import axios from 'axios';
@@ -101,23 +101,45 @@ const ExcelDataLoader = ({ onDataLoaded }) => {
         try {
             console.log("Data yang akan dikirim ke database:", dbData);
 
-            const token = localStorage.getItem('adminToken');
-            const response = await axios.post(`${API_BASE_URL}/api/rth-kecamatan/bulk`, {
-                data: dbData
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
+            // Check authentication
+            const isLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+            if (!isLoggedIn) {
+                setSaveStatus({
+                    success: false,
+                    message: 'Anda harus login sebagai admin untuk upload data'
+                });
+                setLoading(false);
+                return;
+            }
+
+            const headers = {
+                'Authorization': 'Bearer simple-admin-token',
+                'Content-Type': 'application/json'
+            };
+
+            try {
+                const response = await axios.post(`${API_BASE_URL}/api/rth-kecamatan/bulk`, {
+                    data: dbData
+                }, { headers });
+
+                setSaveStatus({
+                    success: true,
+                    message: `${response.data.count || dbData.length} data berhasil disimpan ke database`
+                });
+
+                // Panggil callback untuk refresh data
+                if (onDataLoaded) {
+                    onDataLoaded();
                 }
-            });
-
-            setSaveStatus({
-                success: true,
-                message: `${response.data.count} data berhasil disimpan ke database`
-            });
-
-            // Panggil callback untuk refresh data
-            if (onDataLoaded) {
-                onDataLoaded();
+            } catch (error) {
+                if (error.response?.status === 401) {
+                    setSaveStatus({
+                        success: false,
+                        message: 'Tidak memiliki akses untuk upload data. Pastikan Anda login sebagai admin.'
+                    });
+                } else {
+                    throw error;
+                }
             }
 
             setLoading(false);
@@ -131,6 +153,9 @@ const ExcelDataLoader = ({ onDataLoaded }) => {
             setLoading(false);
         }
     };
+
+    // Check if user is authenticated
+    const isAuthenticated = localStorage.getItem('isAdminLoggedIn') === 'true';
 
     return (
         <div className="space-y-4">
@@ -149,25 +174,45 @@ const ExcelDataLoader = ({ onDataLoaded }) => {
                 )}
             </div>
 
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+            {/* Authentication Check */}
+            {!isAuthenticated && (
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-3">
+                    <div className="flex items-center">
+                        <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                        <p className="text-sm">Login sebagai admin untuk menggunakan fitur upload Excel.</p>
+                    </div>
+                </div>
+            )}
+
+            <div className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isAuthenticated
+                    ? 'border-gray-300 hover:border-gray-400'
+                    : 'border-gray-200 bg-gray-50'
+                }`}>
                 <input
                     type="file"
                     accept=".xlsx, .xls"
                     onChange={handleFileUpload}
-                    disabled={loading}
-                    className="block w-full text-sm text-gray-500
+                    disabled={loading || !isAuthenticated}
+                    className={`block w-full text-sm text-gray-500
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
                         file:text-sm file:font-semibold
-                        file:bg-green-50 file:text-green-700
-                        hover:file:bg-green-100
-                        disabled:opacity-50 disabled:cursor-not-allowed"
+                        ${isAuthenticated
+                            ? 'file:bg-green-50 file:text-green-700 hover:file:bg-green-100'
+                            : 'file:bg-gray-100 file:text-gray-400'
+                        }
+                        disabled:opacity-50 disabled:cursor-not-allowed`}
                 />
                 <div className="mt-2">
-                    <p className="text-sm text-gray-600">
-                        Pilih file Excel (.xlsx atau .xls)
+                    <p className={`text-sm ${isAuthenticated ? 'text-gray-600' : 'text-gray-400'}`}>
+                        {isAuthenticated
+                            ? 'Pilih file Excel (.xlsx atau .xls)'
+                            : 'Login sebagai admin untuk upload file'
+                        }
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className={`text-xs mt-1 ${isAuthenticated ? 'text-gray-500' : 'text-gray-400'}`}>
                         Format kolom: KECAMATAN, LUAS TAMAN, LUAS PEMAKAMAN, TOTAL RTH, LUAS KECAMATAN, CLUSTER
                     </p>
                 </div>
@@ -186,8 +231,8 @@ const ExcelDataLoader = ({ onDataLoaded }) => {
 
             {saveStatus && (
                 <div className={`border rounded-lg p-3 ${saveStatus.success
-                        ? 'bg-green-50 border-green-200 text-green-800'
-                        : 'bg-red-50 border-red-200 text-red-800'
+                    ? 'bg-green-50 border-green-200 text-green-800'
+                    : 'bg-red-50 border-red-200 text-red-800'
                     }`}>
                     <div className="flex items-center">
                         {saveStatus.success ? (
@@ -216,6 +261,7 @@ const ExcelDataLoader = ({ onDataLoaded }) => {
                             <li>• Header harus mengandung kata kunci: KECAMATAN, LUAS TAMAN, LUAS PEMAKAMAN, TOTAL RTH, LUAS KECAMATAN, CLUSTER</li>
                             <li>• Data numerik menggunakan titik (.) sebagai pemisah desimal</li>
                             <li>• Upload akan mengganti semua data yang ada sebelumnya</li>
+                            <li>• <strong>Hanya admin yang dapat melakukan upload data</strong></li>
                         </ul>
                     </div>
                 </div>
