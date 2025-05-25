@@ -15,7 +15,7 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-    origin: 'https://website-sig-blue.vercel.app',
+    origin: 'https://www.bandung-rth.my.id',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
@@ -25,7 +25,7 @@ app.use(cors({
 
 // Add CORS headers middleware
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://website-sig-blue.vercel.app');
+    res.header('Access-Control-Allow-Origin', 'https://www.bandung-rth.my.id');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
     res.header('Access-Control-Allow-Credentials', 'false'); // Set to false for public endpoints
