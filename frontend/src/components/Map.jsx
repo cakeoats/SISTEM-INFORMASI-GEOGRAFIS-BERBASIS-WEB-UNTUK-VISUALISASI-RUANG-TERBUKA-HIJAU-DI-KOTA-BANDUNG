@@ -66,9 +66,10 @@ const BandungMap = () => {
     const createCustomMarkerIcon = () => {
         return L.icon({
             iconUrl: '/marker-blue.png',
-            iconSize: [32, 32], // Adjust size as needed
-            iconAnchor: [16, 32], // Point where the marker anchors to the map (bottom center)
-            popupAnchor: [0, -32] // Point where popups appear relative to the iconAnchor
+            iconSize: [25, 41], // Standard Leaflet marker proportions
+            iconAnchor: [12, 41], // Point where the marker anchors to the map (bottom center)
+            popupAnchor: [1, -34], // Point where popups appear relative to the iconAnchor
+            shadowUrl: null // Remove shadow to avoid conflicts
         });
     };
 
@@ -183,11 +184,11 @@ const BandungMap = () => {
     const getFeatureStyle = (feature) => {
         return {
             fillColor: getColor(feature),
-            weight: 0.8,
+            weight: 1,
             opacity: 1,
             color: '#333',
             dashArray: '0.5',
-            fillOpacity: 0.5 // Reduced opacity so markers are more visible
+            fillOpacity: 0.3 // Reduced opacity so markers are more visible
         };
     };
 
@@ -235,7 +236,7 @@ const BandungMap = () => {
                     weight: 3,
                     color: '#555',
                     dashArray: '',
-                    fillOpacity: 0.7
+                    fillOpacity: 0.5
                 });
                 layer.bringToFront();
             },
