@@ -242,11 +242,6 @@ const AdminLoginPage = () => {
                             <p className="text-xs text-gray-400 mt-1">
                                 Hanya untuk administrator yang berwenang
                             </p>
-                            {/* Development credentials info */}
-                            <div className="mt-3 p-2 bg-blue-50 rounded-md">
-                                <p className="text-xs text-blue-600 font-medium">Development Mode</p>
-                                <p className="text-xs text-blue-500">Username: admin | Password: admin123</p>
-                            </div>
                         </div>
                     </div>
                 </div>
