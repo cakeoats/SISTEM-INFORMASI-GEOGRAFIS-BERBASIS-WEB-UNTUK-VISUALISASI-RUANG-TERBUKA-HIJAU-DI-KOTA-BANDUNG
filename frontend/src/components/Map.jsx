@@ -80,13 +80,9 @@ const BandungMap = () => {
                         <ellipse cx="12" cy="34" rx="6" ry="2" fill="rgba(0,0,0,0.2)" />
                         <!-- Main marker body -->
                         <path d="M12 0C5.383 0 0 5.383 0 12c0 9 12 24 12 24s12-15 12-24C24 5.383 18.617 0 12 0z" 
-                              fill="#EA4335" 
-                              stroke="#FFFFFF" 
+                              fill="#070708" 
+                              stroke="#edf2ef" 
                               stroke-width="1"/>
-                        <!-- Inner white circle -->
-                        <circle cx="12" cy="12" r="6" fill="#FFFFFF"/>
-                        <!-- Inner colored dot -->
-                        <circle cx="12" cy="12" r="3" fill="#EA4335"/>
                     </svg>
                 </div>
             `,
@@ -207,11 +203,11 @@ const BandungMap = () => {
     const getFeatureStyle = (feature) => {
         return {
             fillColor: getColor(feature),
-            weight: 0.8,
+            weight: 1,
             opacity: 1,
             color: '#333',
             dashArray: '0.5',
-            fillOpacity: 0.3 // Reduced opacity so markers are more visible
+            fillOpacity: 0.5 
         };
     };
 
@@ -259,7 +255,7 @@ const BandungMap = () => {
                     weight: 3,
                     color: '#555',
                     dashArray: '',
-                    fillOpacity: 0.5
+                    fillOpacity: 0.7
                 });
                 layer.bringToFront();
             },
@@ -414,7 +410,6 @@ const BandungMap = () => {
                     <div className="text-xs text-gray-500">
                         • Klik marker merah untuk detail RTH<br />
                         • Hover area untuk info singkat<br />
-                        • Marker bergaya Google Maps
                     </div>
                 </div>
             </div>
@@ -518,7 +513,7 @@ const BandungMap = () => {
                     Klik marker merah untuk detail kecamatan
                 </div>
             </div>
-        </div>
+        </div>  
     );
 };
 
