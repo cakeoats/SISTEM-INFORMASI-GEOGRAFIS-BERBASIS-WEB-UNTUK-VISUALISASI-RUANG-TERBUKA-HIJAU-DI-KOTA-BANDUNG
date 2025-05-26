@@ -1,6 +1,6 @@
-// frontend/src/components/Map.jsx - FIXED untuk menggunakan endpoint public
+// frontend/src/components/Map.jsx - Updated dengan Marker/Pinpoint untuk setiap kecamatan
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -16,6 +16,40 @@ const BandungMap = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Data koordinat kecamatan
+    const kecamatanCoordinates = [
+        { name: "Andir", lat: -6.9125599922178, lng: 107.5782860332605 },
+        { name: "Antapani", lat: -6.9146838129486, lng: 107.6600014758162 },
+        { name: "Arcamanik", lat: -6.9180833751853, lng: 107.6760051667764 },
+        { name: "Astana Anyar", lat: -6.9383246815137, lng: 107.6022831905824 },
+        { name: "Babakan Ciparay", lat: -6.9398915963086, lng: 107.5776614452603 },
+        { name: "Bandung Kidul", lat: -6.9564409108600, lng: 107.6299239031377 },
+        { name: "Bandung Kulon", lat: -6.9247775433433, lng: 107.5695095566973 },
+        { name: "Bandung Wetan", lat: -6.9043109013626, lng: 107.6172978640043 },
+        { name: "Batununggal", lat: -6.9229896978139, lng: 107.6377606787891 },
+        { name: "Bojonglea Kaler", lat: -6.9307670595136, lng: 107.5901624719044 },
+        { name: "Bojonglea Kidul", lat: -6.9496072649972, lng: 107.5974144913079 },
+        { name: "Buahbatu", lat: -6.9493336237850, lng: 107.6523847258450 },
+        { name: "Cibeunying Kaler", lat: -6.8841940548894, lng: 107.6289713537643 },
+        { name: "Cibeunying Kidul", lat: -6.9016032070656, lng: 107.6439278688119 },
+        { name: "Cibiru", lat: -6.9150867132882, lng: 107.7221979583051 },
+        { name: "Cicendo", lat: -6.9024706031260, lng: 107.5860779052432 },
+        { name: "Cidadap", lat: -6.8650162705145, lng: 107.6037609903934 },
+        { name: "Cinambo", lat: -6.9266909245580, lng: 107.6904767958404 },
+        { name: "Coblong", lat: -6.8842797658746, lng: 107.6131122850114 },
+        { name: "Gedebage", lat: -6.9503077649346, lng: 107.6964157781305 },
+        { name: "Kiaracondong", lat: -6.9217126876956, lng: 107.6487927697013 },
+        { name: "Lengkong", lat: -6.9313604023403, lng: 107.6232675469783 },
+        { name: "Mandalajati", lat: -6.8974825708249, lng: 107.6723642626282 },
+        { name: "Panyileukan", lat: -6.9311040560833, lng: 107.7056203378684 },
+        { name: "Rancasari", lat: -6.9512341658400, lng: 107.6726260788117 },
+        { name: "Regol", lat: -6.9383353236929, lng: 107.6116953140295 },
+        { name: "Sukajadi", lat: -6.8671231238573, lng: 107.5907502388069 },
+        { name: "Sukasari", lat: -6.8664471348541, lng: 107.5866432582876 },
+        { name: "Sumur Bandung", lat: -6.9144423016179, lng: 107.6137584679775 },
+        { name: "Ujung Berung", lat: -6.9087528237541, lng: 107.7045057495781 }
+    ];
+
     // Fix Leaflet icon issues
     useEffect(() => {
         delete L.Icon.Default.prototype._getIconUrl;
@@ -27,6 +61,49 @@ const BandungMap = () => {
             iconAnchor: [12, 41]
         });
     }, []);
+
+    // Create custom icon based on cluster
+    const createClusterIcon = (cluster) => {
+        let iconColor;
+        switch (cluster) {
+            case 'cluster_0':
+                iconColor = '#DC2626'; // Red
+                break;
+            case 'cluster_1':
+                iconColor = '#F59E0B'; // Yellow/Orange
+                break;
+            case 'cluster_2':
+                iconColor = '#059669'; // Green
+                break;
+            default:
+                iconColor = '#6B7280'; // Gray
+        }
+
+        return L.divIcon({
+            className: 'custom-marker',
+            html: `
+                <div style="
+                    background-color: ${iconColor};
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 10px;
+                    font-weight: bold;
+                    color: white;
+                ">
+                    ${cluster === 'cluster_0' ? '0' : cluster === 'cluster_1' ? '1' : cluster === 'cluster_2' ? '2' : '?'}
+                </div>
+            `,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            popupAnchor: [0, -12]
+        });
+    };
 
     // Fetch both kecamatan boundaries and RTH data
     useEffect(() => {
@@ -43,7 +120,7 @@ const BandungMap = () => {
                 console.log('Kecamatan data received:', kecamatanResponse.data);
                 setGeoData(kecamatanResponse.data);
 
-                // Fetch RTH data - PENTING: gunakan endpoint /public
+                // Fetch RTH data - menggunakan endpoint /public
                 console.log('Fetching RTH data from public endpoint...');
                 const rthResponse = await publicAxios.get('/api/rth-kecamatan/public');
                 console.log('RTH data received:', rthResponse.data);
@@ -143,7 +220,7 @@ const BandungMap = () => {
             opacity: 1,
             color: '#333',
             dashArray: '0.5',
-            fillOpacity: 0.7
+            fillOpacity: 0.3 // Reduced opacity so markers are more visible
         };
     };
 
@@ -161,7 +238,7 @@ const BandungMap = () => {
         }
     };
 
-    // Generate tooltip content
+    // Generate tooltip content for GeoJSON
     const createTooltipContent = (feature) => {
         const kecamatanName = feature.properties.name || 'Unknown';
 
@@ -175,22 +252,13 @@ const BandungMap = () => {
         return `${kecamatanName} (${clusterName})`;
     };
 
-    // Function to handle each feature (onEachFeature)
+    // Function to handle each feature (onEachFeature) for GeoJSON
     const onEachFeature = (feature, layer) => {
         // Create tooltip content
         const tooltipContent = createTooltipContent(feature);
 
         // Bind tooltip for hover
         layer.bindTooltip(tooltipContent);
-
-        // Create detailed popup content
-        const popupContent = createPopupContent(feature);
-
-        // Bind popup for click
-        layer.bindPopup(popupContent, {
-            maxWidth: 300,
-            className: 'custom-popup'
-        });
 
         // Add event listeners for hover effects
         layer.on({
@@ -200,26 +268,20 @@ const BandungMap = () => {
                     weight: 3,
                     color: '#555',
                     dashArray: '',
-                    fillOpacity: 0.8
+                    fillOpacity: 0.5
                 });
                 layer.bringToFront();
             },
             mouseout: (e) => {
                 const layer = e.target;
                 layer.setStyle(getFeatureStyle(feature));
-            },
-            click: (e) => {
-                const layer = e.target;
-                console.log(`Clicked on: ${feature.properties.name || 'Unknown'}`);
             }
         });
     };
 
-    // Create detailed popup content
-    const createPopupContent = (feature) => {
-        const kecamatanName = feature.properties.name || 'Tidak diketahui';
-
-        if (!feature.properties.rthData) {
+    // Create detailed popup content for markers
+    const createMarkerPopupContent = (kecamatanName, rthInfo) => {
+        if (!rthInfo) {
             return `
             <div class="rth-popup">
                 <h3 class="text-lg font-bold mb-1">Kecamatan ${kecamatanName}</h3>
@@ -227,14 +289,13 @@ const BandungMap = () => {
             </div>`;
         }
 
-        const rthData = feature.properties.rthData;
-        const rthPercentage = rthData.luas_kecamatan > 0
-            ? (rthData.total_rth / rthData.luas_kecamatan) * 100
+        const rthPercentage = rthInfo.luas_kecamatan > 0
+            ? (rthInfo.total_rth / rthInfo.luas_kecamatan) * 100
             : 0;
 
         // Get color based on cluster
         let clusterColor;
-        switch (rthData.cluster) {
+        switch (rthInfo.cluster) {
             case 'cluster_0':
                 clusterColor = 'red';
                 break;
@@ -248,7 +309,7 @@ const BandungMap = () => {
                 clusterColor = 'gray';
         }
 
-        const clusterName = getClusterName(rthData.cluster);
+        const clusterName = getClusterName(rthInfo.cluster);
 
         return `
         <div class="rth-popup">
@@ -258,19 +319,19 @@ const BandungMap = () => {
             <table class="w-full text-sm">
                 <tr>
                     <td class="font-semibold pr-2">Total RTH:</td>
-                    <td>${rthData.total_rth?.toFixed(2) || '0'} ha</td>
+                    <td>${rthInfo.total_rth?.toFixed(2) || '0'} ha</td>
                 </tr>
                 <tr>
                     <td class="font-semibold pr-2">Luas Taman:</td>
-                    <td>${rthData.luas_taman?.toFixed(2) || '0'} ha</td>
+                    <td>${rthInfo.luas_taman?.toFixed(2) || '0'} ha</td>
                 </tr>
                 <tr>
                     <td class="font-semibold pr-2">Luas Pemakaman:</td>
-                    <td>${rthData.luas_pemakaman?.toFixed(2) || '0'} ha</td>
+                    <td>${rthInfo.luas_pemakaman?.toFixed(2) || '0'} ha</td>
                 </tr>
                 <tr>
                     <td class="font-semibold pr-2">Luas Kecamatan:</td>
-                    <td>${rthData.luas_kecamatan?.toFixed(0) || '0'} ha</td>
+                    <td>${rthInfo.luas_kecamatan?.toFixed(0) || '0'} ha</td>
                 </tr>
                 <tr>
                     <td class="font-semibold pr-2">% RTH:</td>
@@ -284,32 +345,74 @@ const BandungMap = () => {
         </div>`;
     };
 
+    // Get RTH data for a specific kecamatan
+    const getRthDataForKecamatan = (kecamatanName) => {
+        if (!rthData || !Array.isArray(rthData)) return null;
+
+        return rthData.find(item =>
+            item.kecamatan &&
+            item.kecamatan.toLowerCase().trim() === kecamatanName.toLowerCase().trim()
+        );
+    };
+
+    // Normalize kecamatan name for matching
+    const normalizeKecamatanName = (name) => {
+        return name.toLowerCase().trim()
+            .replace(/bojonglea/g, 'bojongloa') // Handle naming variations
+            .replace(/cibeunying/g, 'cibeunying');
+    };
+
+    // Get marker data with RTH info
+    const getMarkersWithRthData = () => {
+        if (!rthData) return [];
+
+        return kecamatanCoordinates.map(coord => {
+            // Try to find matching RTH data
+            const normalizedCoordName = normalizeKecamatanName(coord.name);
+            const rthInfo = rthData.find(item => {
+                if (!item.kecamatan) return false;
+                const normalizedRthName = normalizeKecamatanName(item.kecamatan);
+                return normalizedRthName === normalizedCoordName ||
+                    normalizedRthName.includes(normalizedCoordName) ||
+                    normalizedCoordName.includes(normalizedRthName);
+            });
+
+            return {
+                ...coord,
+                rthData: rthInfo,
+                cluster: rthInfo?.cluster || 'no_data'
+            };
+        });
+    };
+
     // Custom Legend component
     const MapLegend = () => {
         return (
             <div className="leaflet-bottom leaflet-right" style={{ zIndex: 999 }}>
                 <div className="leaflet-control leaflet-bar bg-white p-2 shadow-md rounded-md m-4" style={{ minWidth: '300px' }}>
                     <h4 className="font-bold text-sm mb-2">Legenda Cluster RTH</h4>
-                    <div className="space-y-1">
+                    <div className="space-y-1 mb-3">
                         <div className="flex items-center">
-                            <div className="w-4 h-4 bg-green-600 mr-2"></div>
+                            <div className="w-4 h-4 bg-green-600 mr-2 rounded-full"></div>
                             <span className="text-xs">Cluster 2 (RTH Tinggi)</span>
                         </div>
                         <div className="flex items-center">
-                            <div className="w-4 h-4 bg-yellow-400 mr-2"></div>
+                            <div className="w-4 h-4 bg-yellow-400 mr-2 rounded-full"></div>
                             <span className="text-xs">Cluster 1 (RTH Menengah)</span>
                         </div>
                         <div className="flex items-center">
-                            <div className="w-4 h-4 bg-red-600 mr-2"></div>
+                            <div className="w-4 h-4 bg-red-600 mr-2 rounded-full"></div>
                             <span className="text-xs">Cluster 0 (RTH Rendah)</span>
                         </div>
                         <div className="flex items-center">
-                            <div className="w-4 h-4 bg-gray-400 mr-2"></div>
+                            <div className="w-4 h-4 bg-gray-400 mr-2 rounded-full"></div>
                             <span className="text-xs">Data tidak tersedia</span>
                         </div>
                     </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                        Klik pada kecamatan untuk detail
+                    <hr className="my-2" />
+                    <div className="text-xs text-gray-500">
+                        • Klik marker untuk detail RTH<br />
+                        • Hover area untuk info singkat
                     </div>
                 </div>
             </div>
@@ -346,11 +449,13 @@ const BandungMap = () => {
         );
     }
 
+    const markersWithRthData = getMarkersWithRthData();
+
     return (
         <div className="h-full w-full relative">
             <MapContainer
                 center={[-6.906685589692674, 107.61551919297135]}
-                zoom={13}
+                zoom={12}
                 style={{ height: '100%', width: '100%' }}
                 scrollWheelZoom={true}
                 zoomControl={true}
@@ -360,6 +465,7 @@ const BandungMap = () => {
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 />
 
+                {/* GeoJSON Layer for Kecamatan Boundaries */}
                 {mergedData && (
                     <GeoJSON
                         data={mergedData}
@@ -368,8 +474,45 @@ const BandungMap = () => {
                     />
                 )}
 
+                {/* Markers for each Kecamatan */}
+                {markersWithRthData.map((marker, index) => (
+                    <Marker
+                        key={`marker-${index}`}
+                        position={[marker.lat, marker.lng]}
+                        icon={createClusterIcon(marker.cluster)}
+                    >
+                        <Popup
+                            maxWidth={320}
+                            className="custom-popup"
+                        >
+                            <div dangerouslySetInnerHTML={{
+                                __html: createMarkerPopupContent(marker.name, marker.rthData)
+                            }} />
+                        </Popup>
+                    </Marker>
+                ))}
+
                 <MapLegend />
             </MapContainer>
+
+            {/* Additional Info Panel */}
+            <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-md z-1000 max-w-xs">
+                <h4 className="font-bold text-sm mb-1">Peta RTH Kota Bandung</h4>
+                <p className="text-xs text-gray-600">
+                    Total {markersWithRthData.length} kecamatan dengan {markersWithRthData.filter(m => m.rthData).length} data RTH tersedia
+                </p>
+                <div className="mt-2 text-xs">
+                    <span className="text-green-600 font-medium">
+                        {markersWithRthData.filter(m => m.cluster === 'cluster_2').length} RTH Tinggi
+                    </span> •
+                    <span className="text-yellow-600 font-medium ml-1">
+                        {markersWithRthData.filter(m => m.cluster === 'cluster_1').length} RTH Menengah
+                    </span> •
+                    <span className="text-red-600 font-medium ml-1">
+                        {markersWithRthData.filter(m => m.cluster === 'cluster_0').length} RTH Rendah
+                    </span>
+                </div>
+            </div>
         </div>
     );
 };
