@@ -1,6 +1,7 @@
-// frontend/src/components/RthManagement.jsx
+// frontend/src/components/RthManagement.jsx - Updated dengan Download Excel dan Reset Filter
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 import ExcelDataLoader from './ExcelDataLoader';
 import { API_BASE_URL } from '../config';
 
@@ -11,7 +12,7 @@ const RthManagement = () => {
     const [error, setError] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [downloadLoading, setDownloadLoading] = useState(false);
 
     // Filter states
     const [searchTerm, setSearchTerm] = useState('');
@@ -104,6 +105,104 @@ const RthManagement = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Fungsi untuk download data ke Excel
+    const downloadToExcel = () => {
+        try {
+            setDownloadLoading(true);
+
+            // Siapkan data untuk export (gunakan filtered data atau semua data)
+            const dataToExport = filteredData.length > 0 ? filteredData : rthData;
+
+            if (dataToExport.length === 0) {
+                alert('Tidak ada data untuk didownload');
+                setDownloadLoading(false);
+                return;
+            }
+
+            // Format data untuk Excel
+            const excelData = dataToExport.map((item, index) => ({
+                'No': index + 1,
+                'Kecamatan': item.kecamatan,
+                'Luas Taman (ha)': parseFloat(item.luas_taman).toFixed(3),
+                'Luas Pemakaman (ha)': parseFloat(item.luas_pemakaman).toFixed(3),
+                'Total RTH (ha)': parseFloat(item.total_rth).toFixed(3),
+                'Luas Kecamatan (ha)': parseFloat(item.luas_kecamatan).toFixed(0),
+                'Persentase RTH (%)': item.luas_kecamatan > 0 ?
+                    ((item.total_rth / item.luas_kecamatan) * 100).toFixed(2) : '0.00',
+                'Cluster': item.cluster
+            }));
+
+            // Tambahkan baris total di akhir
+            const totalRow = {
+                'No': '',
+                'Kecamatan': 'TOTAL',
+                'Luas Taman (ha)': safeReduce(dataToExport, 'luas_taman').toFixed(3),
+                'Luas Pemakaman (ha)': safeReduce(dataToExport, 'luas_pemakaman').toFixed(3),
+                'Total RTH (ha)': safeReduce(dataToExport, 'total_rth').toFixed(3),
+                'Luas Kecamatan (ha)': safeReduce(dataToExport, 'luas_kecamatan').toFixed(0),
+                'Persentase RTH (%)': safeReduce(dataToExport, 'luas_kecamatan') > 0 ?
+                    ((safeReduce(dataToExport, 'total_rth') / safeReduce(dataToExport, 'luas_kecamatan')) * 100).toFixed(2) : '0.00',
+                'Cluster': ''
+            };
+
+            excelData.push(totalRow);
+
+            // Buat workbook dan worksheet
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+
+            // Set lebar kolom
+            const columnWidths = [
+                { wch: 5 },  // No
+                { wch: 20 }, // Kecamatan
+                { wch: 18 }, // Luas Taman
+                { wch: 20 }, // Luas Pemakaman
+                { wch: 15 }, // Total RTH
+                { wch: 20 }, // Luas Kecamatan
+                { wch: 18 }, // Persentase RTH
+                { wch: 15 }  // Cluster
+            ];
+            worksheet['!cols'] = columnWidths;
+
+            // Tambahkan worksheet ke workbook
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Data RTH Admin');
+
+            // Generate filename dengan timestamp
+            const now = new Date();
+            const timestamp = now.toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            const filterInfo = selectedCluster !== 'all' || searchTerm ? '_filtered' : '';
+            const filename = `Data_RTH_Admin_${timestamp}${filterInfo}.xlsx`;
+
+            // Download file
+            XLSX.writeFile(workbook, filename);
+
+            // Tampilkan notifikasi sukses
+            alert(`Data berhasil didownload: ${filename}\n\nTotal data: ${dataToExport.length} kecamatan`);
+
+        } catch (error) {
+            console.error('Error downloading Excel:', error);
+            alert('Gagal mendownload data. Silakan coba lagi.');
+        } finally {
+            setDownloadLoading(false);
+        }
+    };
+
+    // Helper function untuk menghitung total dengan safe handling
+    const safeReduce = (array, field) => {
+        if (!array || !Array.isArray(array)) return 0;
+        return array.reduce((sum, item) => {
+            const value = parseFloat(item[field]) || 0;
+            return sum + value;
+        }, 0);
+    };
+
+    // Reset semua filter
+    const resetFilters = () => {
+        setSearchTerm('');
+        setSelectedCluster('all');
+        setSortConfig({ key: null, direction: 'ascending' });
     };
 
     const handleInputChange = (e) => {
@@ -288,9 +387,9 @@ const RthManagement = () => {
                 <ExcelDataLoader onDataLoaded={fetchRthData} />
             </div>
 
-            {/* Filters */}
+            {/* Filters dengan Download Button */}
             <div className="bg-white rounded-lg shadow-md p-4">
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-4 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                             Cari Kecamatan
@@ -319,7 +418,101 @@ const RthManagement = () => {
                             ))}
                         </select>
                     </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Reset Filter
+                        </label>
+                        <button
+                            onClick={resetFilters}
+                            disabled={searchTerm === '' && selectedCluster === 'all' && !sortConfig.key}
+                            className="w-full bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                        >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Reset Filter
+                        </button>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Download Data
+                        </label>
+                        <button
+                            onClick={downloadToExcel}
+                            disabled={downloadLoading || !rthData.length}
+                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-2 px-4 rounded-md transition-colors flex items-center justify-center"
+                        >
+                            {downloadLoading ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Downloading...
+                                </>
+                            ) : (
+                                <>
+                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                    Download Excel
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
+
+                {/* Filter Status */}
+                {(selectedCluster !== 'all' || searchTerm || sortConfig.key) && (
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <span className="font-medium text-blue-700">Filter aktif:</span>
+                            {selectedCluster !== 'all' && (
+                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">
+                                    Cluster: {selectedCluster}
+                                    <button
+                                        className="ml-1 text-blue-600 hover:text-blue-800"
+                                        onClick={() => setSelectedCluster('all')}
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+                            {searchTerm && (
+                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">
+                                    Pencarian: "{searchTerm}"
+                                    <button
+                                        className="ml-1 text-blue-600 hover:text-blue-800"
+                                        onClick={() => setSearchTerm('')}
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+                            {sortConfig.key && (
+                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">
+                                    Urutan: {sortConfig.key} {sortConfig.direction === 'ascending' ? '↑' : '↓'}
+                                    <button
+                                        className="ml-1 text-blue-600 hover:text-blue-800"
+                                        onClick={() => setSortConfig({ key: null, direction: 'ascending' })}
+                                    >
+                                        ×
+                                    </button>
+                                </span>
+                            )}
+                            <button
+                                className="text-blue-700 hover:text-blue-900 underline ml-auto text-sm"
+                                onClick={resetFilters}
+                            >
+                                Reset Semua Filter
+                            </button>
+                        </div>
+                        <div className="mt-2 text-sm text-blue-600">
+                            Menampilkan {filteredData.length} dari {rthData.length} data.
+                            Download akan menggunakan data yang sedang ditampilkan.
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Data Table */}
@@ -413,7 +606,20 @@ const RthManagement = () => {
                                 <tr>
                                     <td colSpan="8" className="px-4 py-8 text-center text-sm text-gray-500">
                                         {searchTerm || selectedCluster !== 'all'
-                                            ? 'Tidak ada data yang sesuai dengan filter'
+                                            ? (
+                                                <div className="flex flex-col items-center">
+                                                    <svg className="h-8 w-8 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <p>Tidak ada data yang sesuai dengan filter</p>
+                                                    <button
+                                                        className="mt-2 text-blue-600 hover:text-blue-800 underline"
+                                                        onClick={resetFilters}
+                                                    >
+                                                        Reset filter
+                                                    </button>
+                                                </div>
+                                            )
                                             : 'Belum ada data RTH'
                                         }
                                     </td>
@@ -549,6 +755,42 @@ const RthManagement = () => {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Download Information Section */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                    <svg className="h-5 w-5 text-blue-600 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                        <h3 className="text-lg font-semibold text-blue-800 mb-2">Informasi Download & Filter</h3>
+                        <div className="text-sm text-blue-700 space-y-1">
+                            <p>• <strong>Download Excel:</strong> File akan berisi data yang sedang ditampilkan (sesuai filter aktif)</p>
+                            <p>• <strong>Reset Filter:</strong> Menghapus semua filter, pencarian, dan pengurutan yang aktif</p>
+                            <p>• <strong>Filter Otomatis:</strong> Data akan difilter secara real-time saat Anda mengetik atau mengubah filter</p>
+                            <p>• <strong>Pengurutan:</strong> Klik header kolom untuk mengurutkan data secara ascending/descending</p>
+                            <p>• File Excel akan mencakup kolom tambahan: Persentase RTH dan baris total</p>
+                            <p>• Nama file: <code className="bg-blue-100 px-1 rounded">Data_RTH_Admin_2025-05-27T10-30-00_filtered.xlsx</code></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Download Status Notification */}
+            {downloadLoading && (
+                <div className="fixed bottom-4 right-4 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-50">
+                    <div className="flex items-center">
+                        <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <div>
+                            <p className="font-medium text-gray-800">Sedang memproses download...</p>
+                            <p className="text-sm text-gray-600">Mohon tunggu sebentar</p>
                         </div>
                     </div>
                 </div>
