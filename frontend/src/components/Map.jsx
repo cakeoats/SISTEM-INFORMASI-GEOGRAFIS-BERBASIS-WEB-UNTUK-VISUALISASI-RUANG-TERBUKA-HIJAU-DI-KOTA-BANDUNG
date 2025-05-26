@@ -27,8 +27,8 @@ const BandungMap = () => {
         { name: "Bandung Kulon", lat: -6.9247775433433, lng: 107.5695095566973 },
         { name: "Bandung Wetan", lat: -6.9043109013626, lng: 107.6172978640043 },
         { name: "Batununggal", lat: -6.9229896978139, lng: 107.6377606787891 },
-        { name: "Bojonglea Kaler", lat: -6.9307670595136, lng: 107.5901624719044 },
-        { name: "Bojonglea Kidul", lat: -6.9496072649972, lng: 107.5974144913079 },
+        { name: "Bojongloa Kaler", lat: -6.9307670595136, lng: 107.5901624719044 },
+        { name: "Bojongloa Kidul", lat: -6.9496072649972, lng: 107.5974144913079 },
         { name: "Buahbatu", lat: -6.9493336237850, lng: 107.6523847258450 },
         { name: "Cibeunying Kaler", lat: -6.8841940548894, lng: 107.6289713537643 },
         { name: "Cibeunying Kidul", lat: -6.9016032070656, lng: 107.6439278688119 },
@@ -44,7 +44,7 @@ const BandungMap = () => {
         { name: "Panyileukan", lat: -6.9311040560833, lng: 107.7056203378684 },
         { name: "Rancasari", lat: -6.9512341658400, lng: 107.6726260788117 },
         { name: "Regol", lat: -6.9383353236929, lng: 107.6116953140295 },
-        { name: "Sukajadi", lat: -6.8671231238573, lng: 107.5907502388069 },
+        { name: "Sukajadi", lat: -6.890554002470648, lng: 107.59135119836964 },
         { name: "Sukasari", lat: -6.8664471348541, lng: 107.5866432582876 },
         { name: "Sumur Bandung", lat: -6.9144423016179, lng: 107.6137584679775 },
         { name: "Ujung Berung", lat: -6.9087528237541, lng: 107.7045057495781 }
@@ -62,28 +62,13 @@ const BandungMap = () => {
         });
     }, []);
 
-    // Create custom icon based on cluster
-    const createClusterIcon = (cluster) => {
-        let iconColor;
-        switch (cluster) {
-            case 'cluster_0':
-                iconColor = '#DC2626'; // Red
-                break;
-            case 'cluster_1':
-                iconColor = '#F59E0B'; // Yellow/Orange
-                break;
-            case 'cluster_2':
-                iconColor = '#059669'; // Green
-                break;
-            default:
-                iconColor = '#6B7280'; // Gray
-        }
-
+    // Create uniform marker icon (tidak berdasarkan cluster)
+    const createUniformIcon = () => {
         return L.divIcon({
             className: 'custom-marker',
             html: `
                 <div style="
-                    background-color: ${iconColor};
+                    background-color: #2563EB;
                     width: 20px;
                     height: 20px;
                     border-radius: 50%;
@@ -92,11 +77,13 @@ const BandungMap = () => {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 10px;
-                    font-weight: bold;
-                    color: white;
                 ">
-                    ${cluster === 'cluster_0' ? '0' : cluster === 'cluster_1' ? '1' : cluster === 'cluster_2' ? '2' : '?'}
+                    <div style="
+                        width: 6px;
+                        height: 6px;
+                        background-color: white;
+                        border-radius: 50%;
+                    "></div>
                 </div>
             `,
             iconSize: [24, 24],
@@ -358,7 +345,8 @@ const BandungMap = () => {
     // Normalize kecamatan name for matching
     const normalizeKecamatanName = (name) => {
         return name.toLowerCase().trim()
-            .replace(/bojonglea/g, 'bojongloa') // Handle naming variations
+            .replace(/bojongloa/g, 'bojongloa') // Unified name
+            .replace(/bojonglea/g, 'bojongloa') // Handle old naming
             .replace(/cibeunying/g, 'cibeunying');
     };
 
@@ -372,15 +360,24 @@ const BandungMap = () => {
             const rthInfo = rthData.find(item => {
                 if (!item.kecamatan) return false;
                 const normalizedRthName = normalizeKecamatanName(item.kecamatan);
-                return normalizedRthName === normalizedCoordName ||
-                    normalizedRthName.includes(normalizedCoordName) ||
+
+                // Exact match first
+                if (normalizedRthName === normalizedCoordName) return true;
+
+                // Handle special cases
+                if (normalizedCoordName === 'ujung berung' && normalizedRthName.includes('ujung berung')) return true;
+                if (normalizedCoordName === 'sukajadi' && normalizedRthName.includes('sukajadi')) return true;
+                if (normalizedCoordName === 'sukasari' && normalizedRthName.includes('sukasari')) return true;
+
+                // Partial match for similar names
+                return normalizedRthName.includes(normalizedCoordName) ||
                     normalizedCoordName.includes(normalizedRthName);
             });
 
             return {
                 ...coord,
                 rthData: rthInfo,
-                cluster: rthInfo?.cluster || 'no_data'
+                hasData: !!rthInfo
             };
         });
     };
@@ -411,8 +408,8 @@ const BandungMap = () => {
                     </div>
                     <hr className="my-2" />
                     <div className="text-xs text-gray-500">
-                        • Klik marker untuk detail RTH<br />
-                        • Hover area untuk info singkat
+                        • Klik marker biru untuk detail RTH<br />
+                        • Hover area untuk info singkat<br />
                     </div>
                 </div>
             </div>
@@ -479,7 +476,7 @@ const BandungMap = () => {
                     <Marker
                         key={`marker-${index}`}
                         position={[marker.lat, marker.lng]}
-                        icon={createClusterIcon(marker.cluster)}
+                        icon={createUniformIcon()}
                     >
                         <Popup
                             maxWidth={320}
@@ -499,18 +496,21 @@ const BandungMap = () => {
             <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-md z-1000 max-w-xs">
                 <h4 className="font-bold text-sm mb-1">Peta RTH Kota Bandung</h4>
                 <p className="text-xs text-gray-600">
-                    Total {markersWithRthData.length} kecamatan dengan {markersWithRthData.filter(m => m.rthData).length} data RTH tersedia
+                    Total {markersWithRthData.length} kecamatan dengan {markersWithRthData.filter(m => m.hasData).length} data RTH tersedia
                 </p>
                 <div className="mt-2 text-xs">
                     <span className="text-green-600 font-medium">
-                        {markersWithRthData.filter(m => m.cluster === 'cluster_2').length} RTH Tinggi
+                        {markersWithRthData.filter(m => m.rthData?.cluster === 'cluster_2').length} RTH Tinggi
                     </span> •
                     <span className="text-yellow-600 font-medium ml-1">
-                        {markersWithRthData.filter(m => m.cluster === 'cluster_1').length} RTH Menengah
+                        {markersWithRthData.filter(m => m.rthData?.cluster === 'cluster_1').length} RTH Menengah
                     </span> •
                     <span className="text-red-600 font-medium ml-1">
-                        {markersWithRthData.filter(m => m.cluster === 'cluster_0').length} RTH Rendah
+                        {markersWithRthData.filter(m => m.rthData?.cluster === 'cluster_0').length} RTH Rendah
                     </span>
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                    Klik marker biru untuk detail kecamatan
                 </div>
             </div>
         </div>
