@@ -188,7 +188,7 @@ const BandungMap = () => {
             opacity: 1,
             color: '#333',
             dashArray: '0.5',
-            fillOpacity: 0.3 // Reduced opacity so markers are more visible
+            fillOpacity: 0.5 // Reduced opacity so markers are more visible
         };
     };
 
@@ -236,7 +236,7 @@ const BandungMap = () => {
                     weight: 3,
                     color: '#555',
                     dashArray: '',
-                    fillOpacity: 0.5
+                    fillOpacity: 0.7
                 });
                 layer.bringToFront();
             },
