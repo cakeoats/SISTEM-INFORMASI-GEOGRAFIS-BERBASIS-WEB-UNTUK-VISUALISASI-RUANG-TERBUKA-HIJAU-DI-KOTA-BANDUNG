@@ -62,33 +62,13 @@ const BandungMap = () => {
         });
     }, []);
 
-    // Create Google Maps style marker icon
-    const createGoogleMapsStyleIcon = () => {
-        return L.divIcon({
-            className: 'google-maps-marker',
-            html: `
-                <div style="
-                    position: relative;
-                    width: 24px;
-                    height: 36px;
-                    display: flex;
-                    align-items: flex-start;
-                    justify-content: center;
-                ">
-                    <svg width="24" height="36" viewBox="0 0 24 36" xmlns="http://www.w3.org/2000/svg">
-                        <!-- Drop shadow -->
-                        <ellipse cx="12" cy="34" rx="6" ry="2" fill="rgba(0,0,0,0.2)" />
-                        <!-- Main marker body -->
-                        <path d="M12 0C5.383 0 0 5.383 0 12c0 9 12 24 12 24s12-15 12-24C24 5.383 18.617 0 12 0z" 
-                              fill="#070708" 
-                              stroke="#edf2ef" 
-                              stroke-width="1"/>
-                    </svg>
-                </div>
-            `,
-            iconSize: [24, 36],
-            iconAnchor: [12, 36],
-            popupAnchor: [0, -36]
+    // Create custom marker icon using uploaded image
+    const createCustomMarkerIcon = () => {
+        return L.icon({
+            iconUrl: '/marker-blue.png',
+            iconSize: [32, 32], // Adjust size as needed
+            iconAnchor: [16, 32], // Point where the marker anchors to the map (bottom center)
+            popupAnchor: [0, -32] // Point where popups appear relative to the iconAnchor
         });
     };
 
@@ -203,11 +183,11 @@ const BandungMap = () => {
     const getFeatureStyle = (feature) => {
         return {
             fillColor: getColor(feature),
-            weight: 1,
+            weight: 0.8,
             opacity: 1,
             color: '#333',
             dashArray: '0.5',
-            fillOpacity: 0.5 
+            fillOpacity: 0.5 // Reduced opacity so markers are more visible
         };
     };
 
@@ -408,7 +388,7 @@ const BandungMap = () => {
                     </div>
                     <hr className="my-2" />
                     <div className="text-xs text-gray-500">
-                        • Klik marker merah untuk detail RTH<br />
+                        • Klik marker biru untuk detail RTH<br />
                         • Hover area untuk info singkat<br />
                     </div>
                 </div>
@@ -476,7 +456,7 @@ const BandungMap = () => {
                     <Marker
                         key={`marker-${index}`}
                         position={[marker.lat, marker.lng]}
-                        icon={createGoogleMapsStyleIcon()}
+                        icon={createCustomMarkerIcon()}
                     >
                         <Popup
                             maxWidth={320}
@@ -510,10 +490,10 @@ const BandungMap = () => {
                     </span>
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
-                    Klik marker merah untuk detail kecamatan
+                    Klik marker biru untuk detail kecamatan
                 </div>
             </div>
-        </div>  
+        </div>
     );
 };
 
