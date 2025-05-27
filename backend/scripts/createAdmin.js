@@ -88,8 +88,8 @@ async function createAdmin() {
         const adminData = {
             username: 'admin',
             password: 'admin12345',
-            email: 'admin@example.com',
-            role: 'admin',
+            email: 'may@example.com',
+            role: 'super_admin',
             isActive: true
         };
 
