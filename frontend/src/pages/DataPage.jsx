@@ -190,11 +190,12 @@ const DataPage = () => {
             // Tambahkan worksheet ke workbook
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Data RTH Bandung');
 
-            // Generate filename dengan timestamp
+            // Generate filename dengan timestamp UTC+7
             const now = new Date();
-            const timestamp = now.toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            const utcPlus7 = new Date(now.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours
+            const timestamp = utcPlus7.toISOString().slice(0, 19).replace(/[:.]/g, '-');
             const filterInfo = selectedCluster !== 'all' || searchTerm ? '_filtered' : '';
-            const filename = `Data_RTH_Bandung_${timestamp}${filterInfo}.xlsx`;
+            const filename = `Data_RTH_Bandung_${timestamp}_UTC+7${filterInfo}.xlsx`;
 
             // Download file
             XLSX.writeFile(workbook, filename);
@@ -630,7 +631,7 @@ const DataPage = () => {
                             <p>• File akan mencakup: No, Kecamatan, Luas Taman, Luas Pemakaman, Total RTH, Luas Kecamatan, Persentase RTH, dan Cluster</p>
                             <p>• Baris total akan ditambahkan secara otomatis di akhir file</p>
                             <p>• Nama file akan mencakup timestamp untuk menghindari duplikasi</p>
-                            <p>• Format file: <code className="bg-blue-100 px-1 rounded">Data_RTH_Bandung_2025-05-26T10-30-00_filtered.xlsx</code></p>
+                            <p>• Format file: <code className="bg-blue-100 px-1 rounded">Data_RTH_Bandung_2025-05-26T17-30-00_filtered.xlsx</code> (UTC+7)</p>
                         </div>
                     </div>
                 </div>

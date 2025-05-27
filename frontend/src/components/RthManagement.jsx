@@ -1,4 +1,4 @@
-// frontend/src/components/RthManagement.jsx - Updated dengan Download Excel dan Reset Filter
+// frontend/src/components/RthManagement.jsx - Updated dengan UTC+7 timezone
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
@@ -107,7 +107,7 @@ const RthManagement = () => {
         }
     };
 
-    // Fungsi untuk download data ke Excel
+    // Fungsi untuk download data ke Excel dengan UTC+7 timezone
     const downloadToExcel = () => {
         try {
             setDownloadLoading(true);
@@ -169,11 +169,12 @@ const RthManagement = () => {
             // Tambahkan worksheet ke workbook
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Data RTH Admin');
 
-            // Generate filename dengan timestamp
+            // Generate filename dengan timestamp UTC+7
             const now = new Date();
-            const timestamp = now.toISOString().slice(0, 19).replace(/[:.]/g, '-');
+            const utcPlus7 = new Date(now.getTime() + (7 * 60 * 60 * 1000)); // Add 7 hours for UTC+7
+            const timestamp = utcPlus7.toISOString().slice(0, 19).replace(/[:.]/g, '-');
             const filterInfo = selectedCluster !== 'all' || searchTerm ? '_filtered' : '';
-            const filename = `Data_RTH_Admin_${timestamp}${filterInfo}.xlsx`;
+            const filename = `Data_RTH_Admin_${timestamp}_UTC+7${filterInfo}.xlsx`;
 
             // Download file
             XLSX.writeFile(workbook, filename);
@@ -759,7 +760,7 @@ const RthManagement = () => {
                             <p>• <strong>Filter Otomatis:</strong> Data akan difilter secara real-time saat Anda mengetik atau mengubah filter</p>
                             <p>• <strong>Pengurutan:</strong> Klik header kolom untuk mengurutkan data secara ascending/descending</p>
                             <p>• File Excel akan mencakup kolom tambahan: Persentase RTH dan baris total</p>
-                            <p>• Nama file: <code className="bg-blue-100 px-1 rounded">Data_RTH_Admin_2025-05-27T10-30-00_filtered.xlsx</code></p>
+                            <p>• Nama file: <code className="bg-blue-100 px-1 rounded">Data_RTH_Admin_2025-05-27T17-30-00_UTC+7_filtered.xlsx</code></p>
                         </div>
                     </div>
                 </div>
