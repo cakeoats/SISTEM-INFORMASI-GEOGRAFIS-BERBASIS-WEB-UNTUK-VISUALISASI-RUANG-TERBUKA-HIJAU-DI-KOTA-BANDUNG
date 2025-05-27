@@ -1,4 +1,4 @@
-// frontend/src/pages/DataPage.jsx - Updated untuk menggunakan endpoint public dengan fitur download Excel
+// frontend/src/pages/DataPage.jsx - Updated dengan hover effect yang lebih baik
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { publicAxios } from '../config';
@@ -286,6 +286,20 @@ const DataPage = () => {
         }
     };
 
+    // Fungsi untuk mendapatkan kelas hover berdasarkan cluster
+    const getHoverClass = (cluster) => {
+        switch (cluster) {
+            case 'cluster_0':
+                return 'hover:bg-red-50 hover:shadow-md';
+            case 'cluster_1':
+                return 'hover:bg-yellow-50 hover:shadow-md';
+            case 'cluster_2':
+                return 'hover:bg-green-50 hover:shadow-md';
+            default:
+                return 'hover:bg-gray-50 hover:shadow-md';
+        }
+    };
+
     if (loading) {
         return <div className="flex justify-center items-center h-64">
             <div className="text-center">
@@ -482,37 +496,37 @@ const DataPage = () => {
                             <tr>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
                                 <th
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                                     onClick={() => requestSort('kecamatan')}
                                 >
                                     Kecamatan {getSortDirection('kecamatan')}
                                 </th>
                                 <th
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                                     onClick={() => requestSort('luas_taman')}
                                 >
                                     Luas Taman (ha) {getSortDirection('luas_taman')}
                                 </th>
                                 <th
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                                     onClick={() => requestSort('luas_pemakaman')}
                                 >
                                     Luas Pemakaman (ha) {getSortDirection('luas_pemakaman')}
                                 </th>
                                 <th
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                                     onClick={() => requestSort('total_rth')}
                                 >
                                     Total RTH (ha) {getSortDirection('total_rth')}
                                 </th>
                                 <th
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                                     onClick={() => requestSort('luas_kecamatan')}
                                 >
                                     Luas Kecamatan (ha) {getSortDirection('luas_kecamatan')}
                                 </th>
                                 <th
-                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                                     onClick={() => requestSort('cluster')}
                                 >
                                     Cluster {getSortDirection('cluster')}
@@ -523,9 +537,17 @@ const DataPage = () => {
                             {filteredData.length > 0 ?
                                 filteredData.map((data, index) => {
                                     const clusterColor = getClusterColor(data.cluster);
+                                    const hoverClass = getHoverClass(data.cluster);
 
                                     return (
-                                        <tr key={data.id || index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                        <tr
+                                            key={data.id || index}
+                                            className={`
+                                                transition-all duration-200 cursor-pointer
+                                                ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                                                ${hoverClass}
+                                            `}
+                                        >
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{index + 1}</td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{data.kecamatan}</td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
