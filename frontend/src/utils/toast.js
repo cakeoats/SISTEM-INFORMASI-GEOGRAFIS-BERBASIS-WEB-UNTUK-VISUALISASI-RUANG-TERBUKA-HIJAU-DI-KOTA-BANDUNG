@@ -1,5 +1,5 @@
-// frontend/src/utils/toast.js
-import { toast } from 'react-hot-toast';
+// frontend/src/utils/toast.js - FIXED VERSION
+import { toast, Toaster } from 'react-hot-toast';
 
 // Custom toast configurations
 const toastConfig = {
@@ -99,13 +99,13 @@ export const showToast = {
 
     // Custom toast for data operations
     data: {
-        saved: () => showToast.success('Data berhasil disimpan'),
-        updated: () => showToast.success('Data berhasil diperbarui'),
-        deleted: () => showToast.success('Data berhasil dihapus'),
-        uploaded: (count) => showToast.success(`${count} data berhasil diupload`),
-        loadError: () => showToast.error('Gagal memuat data. Silakan refresh halaman.'),
-        saveError: () => showToast.error('Gagal menyimpan data. Silakan coba lagi.'),
-        networkError: () => showToast.error('Koneksi bermasalah. Periksa internet Anda.'),
+        saved: () => toast.success('Data berhasil disimpan'),
+        updated: () => toast.success('Data berhasil diperbarui'),
+        deleted: () => toast.success('Data berhasil dihapus'),
+        uploaded: (count) => toast.success(`${count} data berhasil diupload`),
+        loadError: () => toast.error('Gagal memuat data. Silakan refresh halaman.'),
+        saveError: () => toast.error('Gagal menyimpan data. Silakan coba lagi.'),
+        networkError: () => toast.error('Koneksi bermasalah. Periksa internet Anda.'),
     },
 
     // Promise-based toast for async operations
@@ -118,36 +118,5 @@ export const showToast = {
     }
 };
 
-// Toast provider setup for App.jsx
-export const ToastProvider = ({ children }) => {
-    return (
-        <>
-            {children}
-            <Toaster
-                position="top-right"
-                reverseOrder={false}
-                gutter={8}
-                containerClassName=""
-                containerStyle={{}}
-                toastOptions={{
-                    ...toastConfig,
-                    className: '',
-                    success: {
-                        duration: 4000,
-                        theme: {
-                            primary: '#10B981',
-                            secondary: 'white',
-                        },
-                    },
-                    error: {
-                        duration: 5000,
-                        theme: {
-                            primary: '#EF4444',
-                            secondary: 'white',
-                        },
-                    },
-                }}
-            />
-        </>
-    );
-};
+// Export Toaster component untuk digunakan di App.jsx
+export { Toaster };
