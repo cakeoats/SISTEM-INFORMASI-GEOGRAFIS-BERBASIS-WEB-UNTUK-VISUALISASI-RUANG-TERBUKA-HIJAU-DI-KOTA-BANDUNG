@@ -1,7 +1,9 @@
-// frontend/src/pages/DataPage.jsx - Updated dengan hover effect yang lebih baik
+// frontend/src/pages/DataPage.jsx - Full Updated dengan Toast & Skeleton
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { publicAxios } from '../config';
+import { showToast } from '../utils/toast';
+import { TableSkeleton, StatsCardSkeleton } from '../components/LoadingSkeletons';
 
 const DataPage = () => {
     // State untuk menyimpan data
@@ -26,8 +28,12 @@ const DataPage = () => {
 
     // Fungsi untuk mengambil data dari database - menggunakan endpoint public
     const fetchData = async () => {
+        const loadingToast = showToast.loading('Memuat data RTH...');
+
         try {
             setLoading(true);
+            setError(null);
+
             // Gunakan endpoint public untuk halaman DataPage
             const response = await publicAxios.get('/api/rth-kecamatan/public');
 
@@ -45,10 +51,27 @@ const DataPage = () => {
 
             setKecamatanData(formattedData);
             setFilteredData(formattedData);
+
+            showToast.success(`${formattedData.length} data RTH berhasil dimuat`);
             setLoading(false);
         } catch (err) {
             console.error("Error fetching data:", err);
-            setError("Gagal mengambil data: " + (err.response?.data?.message || err.message));
+
+            // Specific error handling dengan toast
+            if (err.response?.status === 404) {
+                setError("Data RTH tidak ditemukan");
+                showToast.error("Data RTH tidak ditemukan");
+            } else if (err.response?.status >= 500) {
+                setError("Server sedang bermasalah. Silakan coba lagi nanti.");
+                showToast.error("Server bermasalah. Coba lagi nanti.");
+            } else if (!navigator.onLine) {
+                setError("Tidak ada koneksi internet");
+                showToast.error("Periksa koneksi internet Anda");
+            } else {
+                setError("Gagal mengambil data: " + (err.response?.data?.message || err.message));
+                showToast.error("Gagal memuat data. Silakan refresh halaman.");
+            }
+
             setLoading(false);
             // Tetapkan array kosong sebagai fallback
             setKecamatanData([]);
@@ -106,6 +129,8 @@ const DataPage = () => {
 
     // Fungsi untuk download data ke Excel
     const downloadToExcel = () => {
+        const loadingToast = showToast.loading('Memproses download...');
+
         try {
             setDownloadLoading(true);
 
@@ -113,7 +138,7 @@ const DataPage = () => {
             const dataToExport = filteredData.length > 0 ? filteredData : kecamatanData;
 
             if (dataToExport.length === 0) {
-                alert('Tidak ada data untuk didownload');
+                showToast.error('Tidak ada data untuk didownload');
                 setDownloadLoading(false);
                 return;
             }
@@ -163,30 +188,6 @@ const DataPage = () => {
             ];
             worksheet['!cols'] = columnWidths;
 
-            // Style untuk header (bold)
-            const range = XLSX.utils.decode_range(worksheet['!ref']);
-            for (let col = range.s.c; col <= range.e.c; col++) {
-                const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
-                if (worksheet[cellAddress]) {
-                    worksheet[cellAddress].s = {
-                        font: { bold: true },
-                        fill: { fgColor: { rgb: "CCCCCC" } }
-                    };
-                }
-            }
-
-            // Style untuk baris total (bold)
-            const totalRowIndex = excelData.length - 1;
-            for (let col = range.s.c; col <= range.e.c; col++) {
-                const cellAddress = XLSX.utils.encode_cell({ r: totalRowIndex, c: col });
-                if (worksheet[cellAddress]) {
-                    worksheet[cellAddress].s = {
-                        font: { bold: true },
-                        fill: { fgColor: { rgb: "FFFFCC" } }
-                    };
-                }
-            }
-
             // Tambahkan worksheet ke workbook
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Data RTH Bandung');
 
@@ -200,12 +201,12 @@ const DataPage = () => {
             // Download file
             XLSX.writeFile(workbook, filename);
 
-            // Tampilkan notifikasi sukses
-            alert(`Data berhasil didownload: ${filename}\n\nTotal data: ${dataToExport.length} kecamatan`);
+            // Toast success dengan filename
+            showToast.success(`File berhasil didownload: ${filename.substring(0, 30)}...`);
 
         } catch (error) {
             console.error('Error downloading Excel:', error);
-            alert('Gagal mendownload data. Silakan coba lagi.');
+            showToast.error('Gagal mendownload data. Silakan coba lagi.');
         } finally {
             setDownloadLoading(false);
         }
@@ -301,51 +302,128 @@ const DataPage = () => {
         }
     };
 
+    // Retry handler
+    const handleRetry = () => {
+        setError(null);
+        fetchData();
+    };
+
+    // Loading state dengan skeleton
     if (loading) {
-        return <div className="flex justify-center items-center h-64">
-            <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto"></div>
-                <p className="mt-2">Loading data...</p>
+        return (
+            <div className="container mx-auto px-4 py-6">
+                {/* Stats skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                        <StatsCardSkeleton key={index} />
+                    ))}
+                </div>
+
+                {/* Filter skeleton */}
+                <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+                    <div className="grid md:grid-cols-3 gap-4">
+                        {Array.from({ length: 3 }).map((_, index) => (
+                            <div key={index} className="animate-pulse">
+                                <div className="h-4 bg-gray-200 rounded w-20 mb-1"></div>
+                                <div className="h-10 bg-gray-200 rounded w-full"></div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Table skeleton */}
+                <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div className="p-4 border-b">
+                        <div className="h-6 bg-gray-200 rounded w-64 animate-pulse"></div>
+                    </div>
+                    <TableSkeleton rows={8} columns={7} />
+                </div>
             </div>
-        </div>;
+        );
     }
 
+    // Error state dengan retry
     if (error && (!kecamatanData || kecamatanData.length === 0)) {
-        return <div className="container mx-auto px-4 py-6">
-            <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-                <h2 className="text-xl font-bold mb-2">Error</h2>
-                <p>{error}</p>
-                <button
-                    className="mt-3 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                    onClick={() => fetchData()}
-                >
-                    Coba Lagi
-                </button>
+        return (
+            <div className="container mx-auto px-4 py-6">
+                <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-6 max-w-md mx-auto">
+                    <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                        <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-xl font-bold mb-2 text-center">Gagal Memuat Data</h2>
+                    <p className="mb-4 text-center">{error}</p>
+                    <div className="flex space-x-2">
+                        <button
+                            className="flex-1 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+                            onClick={handleRetry}
+                        >
+                            Coba Lagi
+                        </button>
+                        <button
+                            className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition-colors"
+                            onClick={() => window.location.href = '/peta'}
+                        >
+                            Lihat Peta
+                        </button>
+                    </div>
+                </div>
             </div>
-        </div>;
+        );
     }
 
     return (
         <div className="container mx-auto px-4 py-6">
+            {/* TEST TOAST BUTTONS - Hapus setelah testing */}
+            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
+                <h3 className="font-bold mb-2">🧪 Test Toast Notifications:</h3>
+                <div className="space-x-2">
+                    <button
+                        onClick={() => showToast.success('Success toast works!')}
+                        className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+                    >
+                        ✅ Success
+                    </button>
+                    <button
+                        onClick={() => showToast.error('Error toast works!')}
+                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+                    >
+                        ❌ Error
+                    </button>
+                    <button
+                        onClick={() => showToast.loading('Loading toast...')}
+                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
+                    >
+                        🔄 Loading
+                    </button>
+                    <button
+                        onClick={() => showToast.warning('Warning toast!')}
+                        className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600"
+                    >
+                        ⚠️ Warning
+                    </button>
+                </div>
+            </div>
 
             {/* Dashboard informasi - SELALU MENAMPILKAN DATA TOTAL */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-lg shadow-md p-4">
+                <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
                     <h3 className="text-lg font-semibold mb-2 text-gray-700">Total RTH Publik</h3>
                     <p className="text-3xl font-bold text-green-600">{totalRthAll.toFixed(2)} ha</p>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-md p-4">
+                <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
                     <h3 className="text-lg font-semibold mb-2 text-gray-700">Persentase RTH Publik</h3>
                     <p className="text-3xl font-bold text-blue-600">{persentaseRthAll.toFixed(2)}%</p>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-md p-4">
+                <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
                     <h3 className="text-lg font-semibold mb-2 text-gray-700">Jumlah Kecamatan</h3>
                     <p className="text-3xl font-bold text-purple-600">{kecamatanData.length || 0}</p>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-md p-4">
+                <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
                     <h3 className="text-lg font-semibold mb-2 text-gray-700">Target RTH Publik</h3>
                     <div className="flex items-center justify-between">
                         <p className="text-3xl font-bold text-red-600">20%</p>
