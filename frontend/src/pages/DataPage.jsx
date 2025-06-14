@@ -375,37 +375,6 @@ const DataPage = () => {
 
     return (
         <div className="container mx-auto px-4 py-6">
-            {/* TEST TOAST BUTTONS - Hapus setelah testing */}
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
-                <h3 className="font-bold mb-2">🧪 Test Toast Notifications:</h3>
-                <div className="space-x-2">
-                    <button
-                        onClick={() => showToast.success('Success toast works!')}
-                        className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
-                    >
-                        ✅ Success
-                    </button>
-                    <button
-                        onClick={() => showToast.error('Error toast works!')}
-                        className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
-                    >
-                        ❌ Error
-                    </button>
-                    <button
-                        onClick={() => showToast.loading('Loading toast...')}
-                        className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
-                    >
-                        🔄 Loading
-                    </button>
-                    <button
-                        onClick={() => showToast.warning('Warning toast!')}
-                        className="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600"
-                    >
-                        ⚠️ Warning
-                    </button>
-                </div>
-            </div>
-
             {/* Dashboard informasi - SELALU MENAMPILKAN DATA TOTAL */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
