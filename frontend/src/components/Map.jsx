@@ -1,4 +1,4 @@
-// frontend/src/components/Map.jsx - Updated dengan Marker/Pinpoint untuk setiap kecamatan
+// frontend/src/components/Map.jsx - Updated dengan Help System dan Loading
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -7,6 +7,9 @@ import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import { API_BASE_URL, publicAxios } from '../config';
+import { showToast } from '../utils/toast';
+import { MapSkeleton } from './LoadingSkeletons';
+import { MapHelpButton } from './MapHelpSystem';
 
 const BandungMap = () => {
     // State untuk data GeoJSON kecamatan dan data RTH
@@ -15,6 +18,7 @@ const BandungMap = () => {
     const [mergedData, setMergedData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [mapReady, setMapReady] = useState(false);
 
     // Data koordinat kecamatan
     const kecamatanCoordinates = [
@@ -66,16 +70,18 @@ const BandungMap = () => {
     const createCustomMarkerIcon = () => {
         return L.icon({
             iconUrl: '/marker-blue.png',
-            iconSize: [25, 41], // Standard Leaflet marker proportions
-            iconAnchor: [12, 41], // Point where the marker anchors to the map (bottom center)
-            popupAnchor: [1, -34], // Point where popups appear relative to the iconAnchor
-            shadowUrl: null // Remove shadow to avoid conflicts
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowUrl: null
         });
     };
 
     // Fetch both kecamatan boundaries and RTH data
     useEffect(() => {
         const fetchData = async () => {
+            const loadingToast = showToast.loading('Memuat data peta...');
+
             try {
                 setLoading(true);
                 setError(null);
@@ -88,13 +94,20 @@ const BandungMap = () => {
                 console.log('Kecamatan data received:', kecamatanResponse.data);
                 setGeoData(kecamatanResponse.data);
 
-                // Fetch RTH data - menggunakan endpoint /public
+                // Fetch RTH data
                 console.log('Fetching RTH data from public endpoint...');
                 const rthResponse = await publicAxios.get('/api/rth-kecamatan/public');
                 console.log('RTH data received:', rthResponse.data);
                 setRthData(rthResponse.data);
 
+                // Simulate network delay untuk better UX
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                toast.dismiss(loadingToast);
+                showToast.success('Peta berhasil dimuat!');
                 setLoading(false);
+                setMapReady(true);
+
             } catch (err) {
                 console.error('Error fetching map data:', err);
                 console.error('Error details:', {
@@ -104,7 +117,23 @@ const BandungMap = () => {
                     data: err.response?.data
                 });
 
-                setError(`Failed to load map data: ${err.response?.status || 'Network Error'} - ${err.response?.statusText || err.message}`);
+                toast.dismiss(loadingToast);
+
+                // Specific error messages
+                if (err.response?.status === 404) {
+                    setError('Data peta tidak ditemukan');
+                    showToast.error('Data peta tidak ditemukan');
+                } else if (err.response?.status >= 500) {
+                    setError('Server sedang bermasalah. Silakan coba lagi nanti.');
+                    showToast.error('Server bermasalah. Coba lagi nanti.');
+                } else if (!navigator.onLine) {
+                    setError('Tidak ada koneksi internet');
+                    showToast.error('Periksa koneksi internet Anda');
+                } else {
+                    setError(`Gagal memuat data peta: ${err.message}`);
+                    showToast.error('Gagal memuat peta. Silakan refresh halaman.');
+                }
+
                 setLoading(false);
             }
         };
@@ -142,7 +171,6 @@ const BandungMap = () => {
                         console.log('No RTH data for:', featureName);
                     }
 
-                    // Return a new feature with RTH data included in properties
                     return {
                         ...feature,
                         properties: {
@@ -161,22 +189,20 @@ const BandungMap = () => {
 
     // Get color based on cluster
     const getColor = (feature) => {
-        // Check if feature has RTH data
         if (!feature.properties.rthData) {
-            return '#CCCCCC'; // Gray for no data
+            return '#CCCCCC';
         }
 
         const rthData = feature.properties.rthData;
-        // Get color based on cluster
         switch (rthData.cluster) {
             case 'cluster_0':
-                return '#E53E3E'; // Red for cluster 0
+                return '#E53E3E';
             case 'cluster_1':
-                return '#F6E05E'; // Yellow for cluster 1
+                return '#F6E05E';
             case 'cluster_2':
-                return '#38A169'; // Green for cluster 2
+                return '#38A169';
             default:
-                return '#CCCCCC'; // Gray for undefined or null cluster
+                return '#CCCCCC';
         }
     };
 
@@ -188,7 +214,7 @@ const BandungMap = () => {
             opacity: 1,
             color: '#333',
             dashArray: '0.5',
-            fillOpacity: 0.5 // Reduced opacity so markers are more visible
+            fillOpacity: 0.5
         };
     };
 
@@ -222,13 +248,9 @@ const BandungMap = () => {
 
     // Function to handle each feature (onEachFeature) for GeoJSON
     const onEachFeature = (feature, layer) => {
-        // Create tooltip content
         const tooltipContent = createTooltipContent(feature);
-
-        // Bind tooltip for hover
         layer.bindTooltip(tooltipContent);
 
-        // Add event listeners for hover effects
         layer.on({
             mouseover: (e) => {
                 const layer = e.target;
@@ -261,7 +283,6 @@ const BandungMap = () => {
             ? (rthInfo.total_rth / rthInfo.luas_kecamatan) * 100
             : 0;
 
-        // Get color based on cluster
         let clusterColor;
         switch (rthInfo.cluster) {
             case 'cluster_0':
@@ -326,8 +347,8 @@ const BandungMap = () => {
     // Normalize kecamatan name for matching
     const normalizeKecamatanName = (name) => {
         return name.toLowerCase().trim()
-            .replace(/bojongloa/g, 'bojongloa') // Unified name
-            .replace(/bojonglea/g, 'bojongloa') // Handle old naming
+            .replace(/bojongloa/g, 'bojongloa')
+            .replace(/bojonglea/g, 'bojongloa')
             .replace(/cibeunying/g, 'cibeunying');
     };
 
@@ -336,21 +357,16 @@ const BandungMap = () => {
         if (!rthData) return [];
 
         return kecamatanCoordinates.map(coord => {
-            // Try to find matching RTH data
             const normalizedCoordName = normalizeKecamatanName(coord.name);
             const rthInfo = rthData.find(item => {
                 if (!item.kecamatan) return false;
                 const normalizedRthName = normalizeKecamatanName(item.kecamatan);
 
-                // Exact match first
                 if (normalizedRthName === normalizedCoordName) return true;
-
-                // Handle special cases
                 if (normalizedCoordName === 'ujung berung' && normalizedRthName.includes('ujung berung')) return true;
                 if (normalizedCoordName === 'sukajadi' && normalizedRthName.includes('sukajadi')) return true;
                 if (normalizedCoordName === 'sukasari' && normalizedRthName.includes('sukasari')) return true;
 
-                // Partial match for similar names
                 return normalizedRthName.includes(normalizedCoordName) ||
                     normalizedCoordName.includes(normalizedRthName);
             });
@@ -397,30 +413,46 @@ const BandungMap = () => {
         );
     };
 
+    // Error retry handler
+    const handleRetry = () => {
+        setError(null);
+        setLoading(true);
+        // Re-fetch data
+        window.location.reload();
+    };
+
+    // Loading state
     if (loading) {
-        return (
-            <div className="flex justify-center items-center h-full">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700 mx-auto"></div>
-                    <p className="mt-2">Loading map data...</p>
-                </div>
-            </div>
-        );
+        return <MapSkeleton />;
     }
 
+    // Error state with retry option
     if (error) {
         return (
             <div className="flex justify-center items-center h-full">
                 <div className="text-center p-4">
-                    <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 max-w-md">
-                        <h3 className="font-bold mb-2">Failed to load map data</h3>
-                        <p className="text-sm mb-3">{error}</p>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                        >
-                            Retry
-                        </button>
+                    <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-6 max-w-md">
+                        <div className="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-red-100 rounded-full">
+                            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                            </svg>
+                        </div>
+                        <h3 className="font-bold mb-2 text-lg">Gagal Memuat Peta</h3>
+                        <p className="text-sm mb-4">{error}</p>
+                        <div className="space-y-2">
+                            <button
+                                onClick={handleRetry}
+                                className="w-full bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+                            >
+                                Coba Lagi
+                            </button>
+                            <button
+                                onClick={() => window.location.href = '/data'}
+                                className="w-full bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition-colors"
+                            >
+                                Lihat Data Tabel
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -437,6 +469,7 @@ const BandungMap = () => {
                 style={{ height: '100%', width: '100%' }}
                 scrollWheelZoom={true}
                 zoomControl={true}
+                className="z-0"
             >
                 <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -473,6 +506,9 @@ const BandungMap = () => {
                 <MapLegend />
             </MapContainer>
 
+            {/* Map Help Button */}
+            <MapHelpButton />
+
             {/* Additional Info Panel */}
             <div className="absolute top-4 left-4 bg-white p-3 rounded-lg shadow-md z-1000 max-w-xs">
                 <h4 className="font-bold text-sm mb-1">Peta RTH Kota Bandung</h4>
@@ -494,6 +530,13 @@ const BandungMap = () => {
                     Klik marker biru untuk detail kecamatan
                 </div>
             </div>
+
+            {/* Success indicator when map is ready */}
+            {mapReady && (
+                <div className="absolute top-4 right-4 bg-green-100 border border-green-300 text-green-800 px-3 py-2 rounded-lg text-xs opacity-90 transition-opacity duration-1000">
+                    ✅ Peta siap digunakan
+                </div>
+            )}
         </div>
     );
 };

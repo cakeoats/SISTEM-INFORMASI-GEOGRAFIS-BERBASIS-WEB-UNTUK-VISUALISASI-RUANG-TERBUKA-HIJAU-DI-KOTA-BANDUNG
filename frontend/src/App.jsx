@@ -1,6 +1,7 @@
-// src/App.jsx - Updated dengan admin routes
+// src/App.jsx - Updated dengan Toast Provider
 import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
@@ -13,6 +14,50 @@ function App() {
   return (
     <Router>
       <div className="flex flex-col min-h-screen w-full">
+        {/* Toast Provider - harus di level paling atas */}
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          gutter={8}
+          containerClassName=""
+          containerStyle={{}}
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+              borderRadius: '8px',
+              fontSize: '14px',
+              maxWidth: '350px',
+            },
+            success: {
+              duration: 4000,
+              style: {
+                background: '#10B981',
+              },
+              iconTheme: {
+                primary: '#fff',
+                secondary: '#10B981',
+              },
+            },
+            error: {
+              duration: 5000,
+              style: {
+                background: '#EF4444',
+              },
+              iconTheme: {
+                primary: '#fff',
+                secondary: '#EF4444',
+              },
+            },
+            loading: {
+              style: {
+                background: '#3B82F6',
+              },
+            },
+          }}
+        />
+
         <Routes>
           {/* Admin Routes - tanpa navbar */}
           <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -24,6 +69,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           {/* Public Routes - dengan navbar */}
           <Route
             path="/*"
