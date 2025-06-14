@@ -298,13 +298,6 @@ const AdminLoginPage = () => {
                                 )}
                             </button>
                         </div>
-
-                        {/* Keyboard shortcut hint */}
-                        <div className="text-center">
-                            <p className="text-xs text-gray-500">
-                                Tekan Enter untuk login cepat
-                            </p>
-                        </div>
                     </form>
 
                     {/* Footer Info */}
