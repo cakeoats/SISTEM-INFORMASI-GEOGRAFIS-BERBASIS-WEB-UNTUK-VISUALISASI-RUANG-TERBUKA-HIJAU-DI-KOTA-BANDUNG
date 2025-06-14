@@ -23,7 +23,7 @@ const LandingPage = () => {
                     <h1 className="text-4xl md:text-6xl font-bold text-center mb-6">
                         Bandung Green Spaces
                     </h1>
-                    <p className="text-xl md:text-2xl text-center max-w-5xl mb-10 font-semibold">
+                    <p className="text-xl md:text-2xl text-center max-w-6xl mb-10 font-semibold">
                         Sistem Informasi Geografis Untuk Visualisasi Ruang Terbuka Hijau Pada 30 Kecamatan Di Kota Bandung
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4">

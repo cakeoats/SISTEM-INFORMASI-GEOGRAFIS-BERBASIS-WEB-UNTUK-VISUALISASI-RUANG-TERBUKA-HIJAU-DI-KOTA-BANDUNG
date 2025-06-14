@@ -386,37 +386,6 @@ const ExcelDataLoader = ({ onDataLoaded }) => {
                     </table>
                 </div>
             </div>
-
-            {/* Advanced Tips Section */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <div className="flex items-start">
-                    <svg className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                    <div className="text-sm text-yellow-800">
-                        <p className="font-medium mb-1">Catatan Penting:</p>
-                        <ul className="text-xs space-y-1">
-                            <li>• Sistem akan otomatis mendeteksi header berdasarkan kata kunci</li>
-                            <li>• Baris dengan kecamatan kosong akan diabaikan</li>
-                            <li>• Data yang tidak valid akan ditampilkan notifikasi warning</li>
-                            <li>• Proses upload akan menghapus semua data RTH yang ada sebelumnya</li>
-                            <li>• Pastikan backup data sebelum melakukan upload jika diperlukan</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            {/* Success Message Template */}
-            {!loading && !error && !uploadProgress && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                    <div className="flex items-center text-gray-600">
-                        <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
-                        </svg>
-                        <span className="text-sm">Pilih file Excel untuk mulai upload data RTH</span>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
