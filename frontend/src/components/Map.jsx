@@ -312,7 +312,12 @@ const BandungMap = () => {
         return name.toLowerCase().trim()
             .replace(/bojongloa/g, 'bojongloa')
             .replace(/bojonglea/g, 'bojongloa')
-            .replace(/cibeunying/g, 'cibeunying');
+            .replace(/cibeunying/g, 'cibeunying')
+            .replace(/bandung wetan/g, 'bandung timur')  // Tambahan
+            .replace(/bandung kulon/g, 'bandung barat')   // Tambahan
+            .replace(/ujung berung/g, 'ujungberung')      // Tambahan
+            .replace(/\s+/g, ' ')  // Multiple spaces jadi single space
+            .trim();
     };
 
     // Get marker data with RTH info
