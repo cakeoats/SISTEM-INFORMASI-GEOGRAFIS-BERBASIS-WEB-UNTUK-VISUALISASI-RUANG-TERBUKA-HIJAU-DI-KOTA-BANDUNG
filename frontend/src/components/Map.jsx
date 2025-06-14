@@ -501,13 +501,6 @@ const BandungMap = () => {
                     Klik marker biru untuk detail kecamatan
                 </div>
             </div>
-
-            {/* Success indicator when map is ready */}
-            {mapReady && (
-                <div className="absolute top-4 right-4 bg-green-100 border border-green-300 text-green-800 px-3 py-2 rounded-lg text-xs opacity-90 transition-opacity duration-1000">
-                    ✅ Peta siap digunakan
-                </div>
-            )}
         </div>
     );
 };
