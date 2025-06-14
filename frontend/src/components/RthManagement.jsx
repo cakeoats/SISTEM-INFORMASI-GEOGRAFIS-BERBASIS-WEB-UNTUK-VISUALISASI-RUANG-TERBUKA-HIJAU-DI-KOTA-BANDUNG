@@ -1,9 +1,10 @@
-// frontend/src/components/RthManagement.jsx - Updated dengan UTC+7 timezone
+// frontend/src/components/RthManagement.jsx - Updated dengan Toast Notifications
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import ExcelDataLoader from './ExcelDataLoader';
 import { API_BASE_URL } from '../config';
+import { showToast } from '../utils/toast';
 
 const RthManagement = () => {
     const [rthData, setRthData] = useState([]);
@@ -13,6 +14,7 @@ const RthManagement = () => {
     const [showModal, setShowModal] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [downloadLoading, setDownloadLoading] = useState(false);
+    const [submitLoading, setSubmitLoading] = useState(false);
 
     // Filter states
     const [searchTerm, setSearchTerm] = useState('');
@@ -99,24 +101,32 @@ const RthManagement = () => {
 
             setRthData(formattedData);
             setError(null);
+
+            // Success toast untuk load data
+            if (formattedData.length > 0) {
+                showToast.success(`${formattedData.length} data RTH berhasil dimuat`);
+            }
         } catch (err) {
             console.error('Error fetching RTH data:', err);
-            setError('Gagal mengambil data RTH: ' + (err.response?.data?.message || err.message));
+            const errorMessage = 'Gagal mengambil data RTH: ' + (err.response?.data?.message || err.message);
+            setError(errorMessage);
+            showToast.error(errorMessage);
         } finally {
             setLoading(false);
         }
     };
 
-    // Fungsi untuk download data ke Excel dengan UTC+7 timezone
+    // Fungsi untuk download data ke Excel dengan Toast
     const downloadToExcel = () => {
         try {
             setDownloadLoading(true);
+            const loadingToast = showToast.loading('Memproses download Excel...');
 
             // Siapkan data untuk export (gunakan filtered data atau semua data)
             const dataToExport = filteredData.length > 0 ? filteredData : rthData;
 
             if (dataToExport.length === 0) {
-                alert('Tidak ada data untuk didownload');
+                showToast.error('Tidak ada data untuk didownload');
                 setDownloadLoading(false);
                 return;
             }
@@ -179,12 +189,13 @@ const RthManagement = () => {
             // Download file
             XLSX.writeFile(workbook, filename);
 
-            // Tampilkan notifikasi sukses
-            alert(`Data berhasil didownload: ${filename}\n\nTotal data: ${dataToExport.length} kecamatan`);
+            // Toast success dengan filename yang diperpendek
+            const shortFilename = filename.length > 30 ? filename.substring(0, 30) + '...' : filename;
+            showToast.download.success(shortFilename);
 
         } catch (error) {
             console.error('Error downloading Excel:', error);
-            alert('Gagal mendownload data. Silakan coba lagi.');
+            showToast.error('Gagal mendownload data. Silakan coba lagi.');
         } finally {
             setDownloadLoading(false);
         }
@@ -204,6 +215,7 @@ const RthManagement = () => {
         setSearchTerm('');
         setSelectedCluster('all');
         setSortConfig({ key: null, direction: 'ascending' });
+        showToast.info('Filter telah direset');
     };
 
     const handleInputChange = (e) => {
@@ -216,14 +228,18 @@ const RthManagement = () => {
 
     const validateForm = () => {
         if (!formData.kecamatan.trim()) {
-            alert('Nama kecamatan harus diisi');
+            showToast.error('Nama kecamatan harus diisi');
             return false;
         }
 
         const numericFields = ['luas_taman', 'luas_pemakaman', 'total_rth', 'luas_kecamatan'];
         for (let field of numericFields) {
             if (formData[field] === '' || isNaN(parseFloat(formData[field]))) {
-                alert(`${field.replace(/_/g, ' ').toUpperCase()} harus berupa angka yang valid`);
+                showToast.error(`${field.replace(/_/g, ' ').toUpperCase()} harus berupa angka yang valid`);
+                return false;
+            }
+            if (parseFloat(formData[field]) < 0) {
+                showToast.error(`${field.replace(/_/g, ' ').toUpperCase()} tidak boleh negatif`);
                 return false;
             }
         }
@@ -235,6 +251,9 @@ const RthManagement = () => {
         e.preventDefault();
 
         if (!validateForm()) return;
+
+        setSubmitLoading(true);
+        const loadingToast = showToast.loading(editingItem ? 'Memperbarui data...' : 'Menyimpan data...');
 
         try {
             const token = localStorage.getItem('adminToken');
@@ -254,7 +273,7 @@ const RthManagement = () => {
                         'Authorization': `Bearer ${token}`
                     }
                 });
-                alert('Data berhasil diperbarui');
+                showToast.data.updated();
             } else {
                 // Create new item
                 await axios.post(`${API_BASE_URL}/api/rth-kecamatan`, submitData, {
@@ -262,7 +281,7 @@ const RthManagement = () => {
                         'Authorization': `Bearer ${token}`
                     }
                 });
-                alert('Data berhasil ditambahkan');
+                showToast.data.saved();
             }
 
             // Reset form and close modal
@@ -281,7 +300,10 @@ const RthManagement = () => {
             fetchRthData();
         } catch (err) {
             console.error('Error saving data:', err);
-            alert('Gagal menyimpan data: ' + (err.response?.data?.message || err.message));
+            const errorMessage = 'Gagal menyimpan data: ' + (err.response?.data?.message || err.message);
+            showToast.error(errorMessage);
+        } finally {
+            setSubmitLoading(false);
         }
     };
 
@@ -296,10 +318,15 @@ const RthManagement = () => {
             cluster: item.cluster
         });
         setShowModal(true);
+        showToast.info(`Mode edit: ${item.kecamatan}`);
     };
 
     const handleDelete = async (item) => {
-        if (window.confirm(`Apakah Anda yakin ingin menghapus data ${item.kecamatan}?`)) {
+        const isConfirmed = window.confirm(`Apakah Anda yakin ingin menghapus data ${item.kecamatan}?`);
+
+        if (isConfirmed) {
+            const loadingToast = showToast.loading(`Menghapus data ${item.kecamatan}...`);
+
             try {
                 const token = localStorage.getItem('adminToken');
                 await axios.delete(`${API_BASE_URL}/api/rth-kecamatan/${item.id}`, {
@@ -307,11 +334,13 @@ const RthManagement = () => {
                         'Authorization': `Bearer ${token}`
                     }
                 });
-                alert('Data berhasil dihapus');
+
+                showToast.data.deleted();
                 fetchRthData();
             } catch (err) {
                 console.error('Error deleting data:', err);
-                alert('Gagal menghapus data: ' + (err.response?.data?.message || err.message));
+                const errorMessage = 'Gagal menghapus data: ' + (err.response?.data?.message || err.message);
+                showToast.error(errorMessage);
             }
         }
     };
@@ -347,6 +376,20 @@ const RthManagement = () => {
         return ['all', ...uniqueClusters];
     };
 
+    // Handle modal close
+    const handleCloseModal = () => {
+        setShowModal(false);
+        setEditingItem(null);
+        setFormData({
+            kecamatan: '',
+            luas_taman: '',
+            luas_pemakaman: '',
+            total_rth: '',
+            luas_kecamatan: '',
+            cluster: 'cluster_0'
+        });
+    };
+
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
@@ -376,7 +419,7 @@ const RthManagement = () => {
                         });
                         setShowModal(true);
                     }}
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium"
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                 >
                     + Tambah Data RTH
                 </button>
@@ -574,13 +617,15 @@ const RthManagement = () => {
                                             <div className="flex space-x-2">
                                                 <button
                                                     onClick={() => handleEdit(item)}
-                                                    className="text-blue-600 hover:text-blue-800 font-medium"
+                                                    disabled={submitLoading}
+                                                    className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(item)}
-                                                    className="text-red-600 hover:text-red-800 font-medium"
+                                                    disabled={submitLoading}
+                                                    className="text-red-600 hover:text-red-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     Hapus
                                                 </button>
@@ -621,9 +666,20 @@ const RthManagement = () => {
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
                     <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
                         <div className="mt-3">
-                            <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                {editingItem ? 'Edit Data RTH' : 'Tambah Data RTH Baru'}
-                            </h3>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-medium text-gray-900">
+                                    {editingItem ? 'Edit Data RTH' : 'Tambah Data RTH Baru'}
+                                </h3>
+                                <button
+                                    onClick={handleCloseModal}
+                                    disabled={submitLoading}
+                                    className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
 
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div>
@@ -635,7 +691,8 @@ const RthManagement = () => {
                                         name="kecamatan"
                                         value={formData.kecamatan}
                                         onChange={handleInputChange}
-                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                                        disabled={submitLoading}
+                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                         placeholder="Masukkan nama kecamatan"
                                         required
                                     />
@@ -649,10 +706,12 @@ const RthManagement = () => {
                                         <input
                                             type="number"
                                             step="0.001"
+                                            min="0"
                                             name="luas_taman"
                                             value={formData.luas_taman}
                                             onChange={handleInputChange}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                                            disabled={submitLoading}
+                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                             placeholder="0.000"
                                             required
                                         />
@@ -665,10 +724,12 @@ const RthManagement = () => {
                                         <input
                                             type="number"
                                             step="0.001"
+                                            min="0"
                                             name="luas_pemakaman"
                                             value={formData.luas_pemakaman}
                                             onChange={handleInputChange}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                                            disabled={submitLoading}
+                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                             placeholder="0.000"
                                             required
                                         />
@@ -683,10 +744,12 @@ const RthManagement = () => {
                                         <input
                                             type="number"
                                             step="0.001"
+                                            min="0"
                                             name="total_rth"
                                             value={formData.total_rth}
                                             onChange={handleInputChange}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                                            disabled={submitLoading}
+                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                             placeholder="0.000"
                                             required
                                         />
@@ -699,10 +762,12 @@ const RthManagement = () => {
                                         <input
                                             type="number"
                                             step="0.001"
+                                            min="0"
                                             name="luas_kecamatan"
                                             value={formData.luas_kecamatan}
                                             onChange={handleInputChange}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                                            disabled={submitLoading}
+                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                             placeholder="0.000"
                                             required
                                         />
@@ -717,7 +782,8 @@ const RthManagement = () => {
                                         name="cluster"
                                         value={formData.cluster}
                                         onChange={handleInputChange}
-                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                                        disabled={submitLoading}
+                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                     >
                                         <option value="cluster_0">Cluster 0 (RTH Rendah)</option>
                                         <option value="cluster_1">Cluster 1 (RTH Menengah)</option>
@@ -728,16 +794,28 @@ const RthManagement = () => {
                                 <div className="flex justify-end space-x-3 pt-4">
                                     <button
                                         type="button"
-                                        onClick={() => setShowModal(false)}
-                                        className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md"
+                                        onClick={handleCloseModal}
+                                        disabled={submitLoading}
+                                        className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
                                         Batal
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 rounded-md"
+                                        disabled={submitLoading}
+                                        className="px-4 py-2 text-white bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed rounded-md transition-colors flex items-center"
                                     >
-                                        {editingItem ? 'Update' : 'Simpan'}
+                                        {submitLoading ? (
+                                            <>
+                                                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                {editingItem ? 'Updating...' : 'Saving...'}
+                                            </>
+                                        ) : (
+                                            editingItem ? 'Update' : 'Simpan'
+                                        )}
                                     </button>
                                 </div>
                             </form>
@@ -766,25 +844,14 @@ const RthManagement = () => {
                 </div>
             </div>
 
-            {/* Download Status Notification */}
-            {downloadLoading && (
-                <div className="fixed bottom-4 right-4 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-50">
-                    <div className="flex items-center">
-                        <svg className="animate-spin h-5 w-5 text-blue-600 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <div>
-                            <p className="font-medium text-gray-800">Sedang memproses download...</p>
-                            <p className="text-sm text-gray-600">Mohon tunggu sebentar</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-                    {error}
+                    <div className="flex items-center">
+                        <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {error}
+                    </div>
                 </div>
             )}
         </div>

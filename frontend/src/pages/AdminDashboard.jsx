@@ -1,9 +1,10 @@
-// frontend/src/pages/AdminDashboard.jsx - Updated dengan tab navigation dan RTH management
+// frontend/src/pages/AdminDashboard.jsx - Updated dengan Toast Notifications
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import RthManagement from '../components/RthManagement';
 import { API_BASE_URL } from '../config';
+import { showToast } from '../utils/toast';
 
 const AdminDashboard = () => {
     const [adminData, setAdminData] = useState(null);
@@ -11,6 +12,7 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [activeTab, setActiveTab] = useState('overview'); // overview, rth-management
+    const [logoutLoading, setLogoutLoading] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -22,6 +24,7 @@ const AdminDashboard = () => {
         try {
             const token = localStorage.getItem('adminToken');
             if (!token) {
+                showToast.error('Sesi login telah berakhir');
                 navigate('/admin/login');
                 return;
             }
@@ -34,10 +37,31 @@ const AdminDashboard = () => {
 
             if (response.data.success) {
                 setAdminData(response.data.data.admin);
+
+                // Welcome toast untuk user yang baru login
+                const user = JSON.parse(localStorage.getItem('adminUser') || '{}');
+                const loginTime = user.loginTime;
+                if (loginTime) {
+                    const timeSinceLogin = Date.now() - new Date(loginTime).getTime();
+                    // Show welcome toast only if logged in within last 5 minutes
+                    if (timeSinceLogin < 5 * 60 * 1000) {
+                        showToast.success(`Selamat datang di dashboard, ${response.data.data.admin.username}!`);
+                    }
+                }
             }
         } catch (error) {
             console.error('Error fetching admin data:', error);
-            setError('Gagal memuat data admin');
+
+            if (error.response?.status === 401) {
+                showToast.error('Sesi login telah berakhir. Silakan login kembali.');
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminUser');
+                navigate('/admin/login');
+            } else {
+                const errorMessage = 'Gagal memuat data admin: ' + (error.response?.data?.message || error.message);
+                setError(errorMessage);
+                showToast.error(errorMessage);
+            }
         }
     };
 
@@ -73,16 +97,29 @@ const AdminDashboard = () => {
                     persentaseRth: persentaseRth.toFixed(2),
                     clusterDistribution
                 });
+
+                // Info toast untuk statistik
+                showToast.info(`Dashboard dimuat: ${totalKecamatan} kecamatan, ${persentaseRth.toFixed(1)}% RTH`);
             }
         } catch (error) {
             console.error('Error fetching system stats:', error);
-            // Don't set error for stats, just log it
+
+            if (error.response?.status !== 401) {
+                showToast.warning('Gagal memuat statistik sistem. Beberapa data mungkin tidak tersedia.');
+            }
         } finally {
             setLoading(false);
         }
     };
 
     const handleLogout = async () => {
+        // Confirmation dialog
+        const isConfirmed = window.confirm('Apakah Anda yakin ingin logout?');
+        if (!isConfirmed) return;
+
+        setLogoutLoading(true);
+        const loadingToast = showToast.loading('Logout...');
+
         try {
             const token = localStorage.getItem('adminToken');
 
@@ -91,32 +128,90 @@ const AdminDashboard = () => {
                 await axios.post(`${API_BASE_URL}/api/auth/logout`, {}, {
                     headers: {
                         'Authorization': `Bearer ${token}`
-                    }
+                    },
+                    timeout: 5000 // 5 second timeout
                 });
             }
+
+            // Success toast
+            showToast.success('Logout berhasil. Sampai jumpa!');
+
         } catch (error) {
             console.error('Logout API error:', error);
-            // Continue with logout even if API fails
+
+            // Still proceed with logout even if API fails
+            if (error.response?.status === 401) {
+                showToast.info('Sesi telah berakhir');
+            } else {
+                showToast.warning('Logout dari server gagal, tetapi sesi lokal telah dihapus');
+            }
         } finally {
-            // Clear authentication data
+            // Clear authentication data regardless of API result
             localStorage.removeItem('adminToken');
             localStorage.removeItem('adminUser');
             delete axios.defaults.headers.common['Authorization'];
 
-            // Redirect to login
-            navigate('/admin/login');
+            setLogoutLoading(false);
+
+            // Delay navigation for better UX
+            setTimeout(() => {
+                navigate('/admin/login');
+            }, 1500);
+        }
+    };
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+
+        // Info toast for tab changes
+        switch (tab) {
+            case 'overview':
+                showToast.info('Menampilkan overview dashboard');
+                break;
+            case 'rth-management':
+                showToast.info('Membuka manajemen data RTH');
+                break;
+            default:
+                break;
         }
     };
 
     const formatDate = (dateString) => {
         if (!dateString) return 'Tidak tersedia';
-        return new Date(dateString).toLocaleString('id-ID', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        try {
+            return new Date(dateString).toLocaleString('id-ID', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            return 'Format tanggal tidak valid';
+        }
+    };
+
+    const handleQuickAction = (action) => {
+        switch (action) {
+            case 'rth-management':
+                setActiveTab('rth-management');
+                showToast.info('Membuka manajemen data RTH');
+                break;
+            case 'view-data':
+                navigate('/data');
+                showToast.info('Mengalihkan ke halaman data RTH');
+                break;
+            case 'view-map':
+                navigate('/peta');
+                showToast.info('Mengalihkan ke peta RTH');
+                break;
+            case 'home':
+                navigate('/');
+                showToast.info('Mengalihkan ke beranda');
+                break;
+            default:
+                showToast.warning('Aksi tidak dikenal');
+        }
     };
 
     if (loading) {
@@ -145,12 +240,28 @@ const AdminDashboard = () => {
                         <div className="flex items-center space-x-4">
                             <div className="text-sm text-gray-700">
                                 Welcome, <span className="font-medium">{adminData?.username || 'Admin'}</span>
+                                {adminData?.role && (
+                                    <span className="ml-1 text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                        {adminData.role}
+                                    </span>
+                                )}
                             </div>
                             <button
                                 onClick={handleLogout}
-                                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                disabled={logoutLoading}
+                                className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
                             >
-                                Logout
+                                {logoutLoading ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Logout...
+                                    </>
+                                ) : (
+                                    'Logout'
+                                )}
                             </button>
                         </div>
                     </div>
@@ -162,19 +273,19 @@ const AdminDashboard = () => {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <nav className="flex space-x-8">
                         <button
-                            onClick={() => setActiveTab('overview')}
-                            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'overview'
-                                    ? 'border-green-500 text-green-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            onClick={() => handleTabChange('overview')}
+                            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'overview'
+                                ? 'border-green-500 text-green-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
                             Overview
                         </button>
                         <button
-                            onClick={() => setActiveTab('rth-management')}
-                            className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'rth-management'
-                                    ? 'border-green-500 text-green-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                            onClick={() => handleTabChange('rth-management')}
+                            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'rth-management'
+                                ? 'border-green-500 text-green-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                 }`}
                         >
                             Manajemen Data RTH
@@ -202,7 +313,7 @@ const AdminDashboard = () => {
                         {/* System Statistics */}
                         {stats && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                                <div className="bg-white rounded-lg shadow-md p-6">
+                                <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
                                     <div className="flex items-center">
                                         <div className="flex-shrink-0">
                                             <div className="w-8 h-8 bg-green-100 rounded-md flex items-center justify-center">
@@ -218,7 +329,7 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-white rounded-lg shadow-md p-6">
+                                <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
                                     <div className="flex items-center">
                                         <div className="flex-shrink-0">
                                             <div className="w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
@@ -234,7 +345,7 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-white rounded-lg shadow-md p-6">
+                                <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
                                     <div className="flex items-center">
                                         <div className="flex-shrink-0">
                                             <div className="w-8 h-8 bg-purple-100 rounded-md flex items-center justify-center">
@@ -251,7 +362,7 @@ const AdminDashboard = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-white rounded-lg shadow-md p-6">
+                                <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
                                     <div className="flex items-center">
                                         <div className="flex-shrink-0">
                                             <div className="w-8 h-8 bg-red-100 rounded-md flex items-center justify-center">
@@ -286,6 +397,12 @@ const AdminDashboard = () => {
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Last Login:</span>
                                             <span className="font-medium text-sm">{formatDate(adminData.lastLogin)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Status:</span>
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                Active
+                                            </span>
                                         </div>
                                     </div>
                                 ) : (
@@ -340,7 +457,7 @@ const AdminDashboard = () => {
                             <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <button
-                                    onClick={() => setActiveTab('rth-management')}
+                                    onClick={() => handleQuickAction('rth-management')}
                                     className="bg-green-600 hover:bg-green-700 text-white p-4 rounded-lg transition-colors"
                                 >
                                     <div className="text-center">
@@ -352,7 +469,7 @@ const AdminDashboard = () => {
                                 </button>
 
                                 <button
-                                    onClick={() => navigate('/data')}
+                                    onClick={() => handleQuickAction('view-data')}
                                     className="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-lg transition-colors"
                                 >
                                     <div className="text-center">
@@ -364,7 +481,7 @@ const AdminDashboard = () => {
                                 </button>
 
                                 <button
-                                    onClick={() => navigate('/peta')}
+                                    onClick={() => handleQuickAction('view-map')}
                                     className="bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-lg transition-colors"
                                 >
                                     <div className="text-center">
@@ -376,7 +493,7 @@ const AdminDashboard = () => {
                                 </button>
 
                                 <button
-                                    onClick={() => navigate('/')}
+                                    onClick={() => handleQuickAction('home')}
                                     className="bg-gray-600 hover:bg-gray-700 text-white p-4 rounded-lg transition-colors"
                                 >
                                     <div className="text-center">

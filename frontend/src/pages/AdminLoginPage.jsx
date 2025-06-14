@@ -1,8 +1,9 @@
-// src/pages/AdminLoginPage.jsx - Updated dengan API integration
+// src/pages/AdminLoginPage.jsx - Updated dengan Toast Notifications
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_BASE_URL } from '../config';
+import { showToast } from '../utils/toast';
 
 const AdminLoginPage = () => {
     const [formData, setFormData] = useState({
@@ -10,7 +11,6 @@ const AdminLoginPage = () => {
         password: ''
     });
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
     const navigate = useNavigate();
@@ -32,6 +32,7 @@ const AdminLoginPage = () => {
             });
 
             if (response.data.success) {
+                showToast.info('Anda sudah login, mengalihkan ke dashboard...');
                 navigate('/admin/dashboard');
             }
         } catch (error) {
@@ -47,24 +48,46 @@ const AdminLoginPage = () => {
             ...prev,
             [name]: value
         }));
-        if (error) setError('');
+    };
+
+    const validateForm = () => {
+        if (!formData.username.trim()) {
+            showToast.error('Username harus diisi');
+            return false;
+        }
+
+        if (!formData.password.trim()) {
+            showToast.error('Password harus diisi');
+            return false;
+        }
+
+        if (formData.username.trim().length < 3) {
+            showToast.error('Username minimal 3 karakter');
+            return false;
+        }
+
+        if (formData.password.length < 6) {
+            showToast.error('Password minimal 6 karakter');
+            return false;
+        }
+
+        return true;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
-        setError('');
 
-        if (!formData.username.trim() || !formData.password.trim()) {
-            setError('Username dan password harus diisi');
-            setLoading(false);
-            return;
-        }
+        if (!validateForm()) return;
+
+        setLoading(true);
+        const loadingToast = showToast.loading('Memverifikasi login...');
 
         try {
             const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
                 username: formData.username.trim(),
                 password: formData.password
+            }, {
+                timeout: 10000 // 10 second timeout
             });
 
             if (response.data.success) {
@@ -84,22 +107,46 @@ const AdminLoginPage = () => {
                 // Set default authorization header
                 axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-                // Redirect to dashboard
-                navigate('/admin/dashboard');
+                // Success toast
+                showToast.success(`Selamat datang, ${admin.username}! Login berhasil.`);
+
+                // Small delay for better UX
+                setTimeout(() => {
+                    navigate('/admin/dashboard');
+                }, 1000);
             }
         } catch (err) {
             console.error('Login error:', err);
-            
+
+            let errorMessage = 'Login gagal. Silakan coba lagi.';
+
             if (err.response) {
                 // Server responded with an error
-                setError(err.response.data.message || 'Login gagal');
+                switch (err.response.status) {
+                    case 401:
+                        errorMessage = 'Username atau password salah';
+                        break;
+                    case 403:
+                        errorMessage = 'Akun Anda tidak memiliki akses admin';
+                        break;
+                    case 429:
+                        errorMessage = 'Terlalu banyak percobaan login. Coba lagi nanti.';
+                        break;
+                    case 500:
+                        errorMessage = 'Server sedang bermasalah. Silakan coba lagi nanti.';
+                        break;
+                    default:
+                        errorMessage = err.response.data?.message || errorMessage;
+                }
             } else if (err.request) {
                 // Request was made but no response
-                setError('Tidak dapat terhubung ke server. Silakan coba lagi.');
-            } else {
-                // Other errors
-                setError('Terjadi kesalahan saat login. Silakan coba lagi.');
+                errorMessage = 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.';
+            } else if (err.code === 'ECONNABORTED') {
+                // Timeout error
+                errorMessage = 'Koneksi timeout. Silakan coba lagi.';
             }
+
+            showToast.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -107,6 +154,17 @@ const AdminLoginPage = () => {
 
     const togglePasswordVisibility = () => {
         setShowPassword(!showPassword);
+    };
+
+    const handleForgotPassword = () => {
+        showToast.info('Hubungi administrator sistem untuk reset password');
+    };
+
+    // Handle Enter key press
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && !loading) {
+            handleSubmit(e);
+        }
     };
 
     return (
@@ -129,19 +187,7 @@ const AdminLoginPage = () => {
 
                 {/* Login Form */}
                 <div className="bg-white rounded-lg shadow-md p-8">
-                    <form className="space-y-6" onSubmit={handleSubmit}>
-                        {/* Error Message */}
-                        {error && (
-                            <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 text-sm">
-                                <div className="flex items-center">
-                                    <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    {error}
-                                </div>
-                            </div>
-                        )}
-
+                    <form className="space-y-6" onSubmit={handleSubmit} onKeyPress={handleKeyPress}>
                         {/* Username Field */}
                         <div>
                             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
@@ -159,13 +205,17 @@ const AdminLoginPage = () => {
                                     type="text"
                                     autoComplete="username"
                                     required
-                                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                                     placeholder="Masukkan username"
                                     value={formData.username}
                                     onChange={handleChange}
                                     disabled={loading}
+                                    maxLength={50}
                                 />
                             </div>
+                            {formData.username && formData.username.length < 3 && (
+                                <p className="mt-1 text-xs text-yellow-600">Username minimal 3 karakter</p>
+                            )}
                         </div>
 
                         {/* Password Field */}
@@ -185,17 +235,19 @@ const AdminLoginPage = () => {
                                     type={showPassword ? "text" : "password"}
                                     autoComplete="current-password"
                                     required
-                                    className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors"
+                                    className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed"
                                     placeholder="Masukkan password"
                                     value={formData.password}
                                     onChange={handleChange}
                                     disabled={loading}
+                                    maxLength={100}
                                 />
                                 <button
                                     type="button"
                                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                                     onClick={togglePasswordVisibility}
                                     disabled={loading}
+                                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                                 >
                                     {showPassword ? (
                                         <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -209,13 +261,28 @@ const AdminLoginPage = () => {
                                     )}
                                 </button>
                             </div>
+                            {formData.password && formData.password.length < 6 && (
+                                <p className="mt-1 text-xs text-yellow-600">Password minimal 6 karakter</p>
+                            )}
+                        </div>
+
+                        {/* Forgot Password Link */}
+                        <div className="text-right">
+                            <button
+                                type="button"
+                                onClick={handleForgotPassword}
+                                className="text-sm text-green-600 hover:text-green-800 font-medium transition-colors"
+                                disabled={loading}
+                            >
+                                Lupa Password?
+                            </button>
                         </div>
 
                         {/* Login Button */}
                         <div>
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={loading || !formData.username.trim() || !formData.password.trim()}
                                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {loading ? (
@@ -224,12 +291,19 @@ const AdminLoginPage = () => {
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        Logging in...
+                                        Memverifikasi...
                                     </div>
                                 ) : (
                                     'Login'
                                 )}
                             </button>
+                        </div>
+
+                        {/* Keyboard shortcut hint */}
+                        <div className="text-center">
+                            <p className="text-xs text-gray-500">
+                                Tekan Enter untuk login cepat
+                            </p>
                         </div>
                     </form>
 
@@ -250,7 +324,8 @@ const AdminLoginPage = () => {
                 <div className="text-center">
                     <button
                         onClick={() => navigate('/')}
-                        className="text-sm text-green-600 hover:text-green-800 font-medium transition-colors"
+                        disabled={loading}
+                        className="text-sm text-green-600 hover:text-green-800 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         ← Kembali ke Beranda
                     </button>
