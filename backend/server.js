@@ -30,7 +30,7 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
     res.header('Access-Control-Allow-Credentials', 'false'); // Set to false for public endpoints
     res.header('Access-Control-Expose-Headers', 'Content-Range, X-Content-Range');
-    
+
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
@@ -79,22 +79,22 @@ const connectWithRetry = async () => {
 
         // Create new connection with explicit database name
         const baseUri = process.env.MONGO_URI;
-        const uri = baseUri.endsWith('/') 
-            ? `${baseUri}bandung-gis` 
+        const uri = baseUri.endsWith('/')
+            ? `${baseUri}bandung-gis`
             : `${baseUri}/bandung-gis`;
-            
+
         console.log('Connecting to MongoDB...', uri);
-        
+
         // Disconnect first to ensure clean state
         await mongoose.disconnect();
-        
+
         // Create new connection
         await mongoose.connect(uri, {
             ...mongoOptions,
             serverSelectionTimeoutMS: 5000, // Shorter timeout for faster failure
             connectTimeoutMS: 5000
         });
-        
+
         // Wait for connection to be ready
         if (mongoose.connection.readyState !== 1) {
             await new Promise((resolve, reject) => {
@@ -113,7 +113,7 @@ const connectWithRetry = async () => {
                 });
             });
         }
-        
+
         // Verify database name
         const dbName = mongoose.connection.db.databaseName;
         console.log('Connected to MongoDB database:', dbName);
@@ -121,9 +121,9 @@ const connectWithRetry = async () => {
         if (dbName !== 'bandung-gis') {
             throw new Error(`Connected to wrong database: ${dbName}. Expected: bandung-gis`);
         }
-        
+
         console.log('MongoDB connected successfully to bandung-gis database');
-        
+
         // Verify connection with ping
         try {
             const pingResult = await mongoose.connection.db.admin().ping();
@@ -132,7 +132,7 @@ const connectWithRetry = async () => {
             console.error('Ping failed:', pingError);
             throw new Error('Connection verification failed');
         }
-        
+
         return true;
     } catch (err) {
         console.error('MongoDB connection error:', err);
@@ -175,7 +175,7 @@ app.get('/health', (req, res) => {
     const dbState = mongoose.connection.readyState;
     const dbStatus = dbState === 1 ? 'connected' : 'disconnected';
     const dbName = mongoose.connection.db?.databaseName || 'unknown';
-    
+
     res.status(200).json({
         status: 'ok',
         database: {
@@ -192,7 +192,7 @@ app.get('/testconnection', async (req, res) => {
         // Force a new connection attempt
         console.log('Testing connection...');
         await connectWithRetry();
-        
+
         // Check current connection state
         const currentState = mongoose.connection.readyState;
         const stateMap = {
