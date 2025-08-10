@@ -4,6 +4,7 @@ const router = express.Router();
 const rthKecamatanController = require('../controllers/rthKecamatanController');
 const { verifyToken, requireAdmin } = require('../middleware/authMiddleware');
 
+// PENTING: Public route HARUS di atas protected routes
 router.get('/public', rthKecamatanController.getAllRthKecamatan);
 
 // Protected routes

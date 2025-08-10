@@ -188,6 +188,65 @@ exports.logoutAdmin = async (req, res) => {
     }
 };
 
+// Change Password
+exports.changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        const adminId = req.admin._id;
+
+        // Validasi input
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password lama dan password baru harus diisi'
+            });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password baru minimal 6 karakter'
+            });
+        }
+
+        // Ambil admin dengan password untuk verifikasi
+        const admin = await Admin.findById(adminId);
+
+        if (!admin) {
+            return res.status(404).json({
+                success: false,
+                message: 'Admin tidak ditemukan'
+            });
+        }
+
+        // Verify current password
+        const isCurrentPasswordValid = await admin.comparePassword(currentPassword);
+
+        if (!isCurrentPasswordValid) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password lama tidak benar'
+            });
+        }
+
+        // Update password (akan di-hash otomatis oleh pre-save hook)
+        admin.password = newPassword;
+        await admin.save();
+
+        res.json({
+            success: true,
+            message: 'Password berhasil diubah'
+        });
+
+    } catch (error) {
+        console.error('Change password error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+};
+
 // Create Admin (Super Admin only)
 exports.createAdmin = async (req, res) => {
     try {
