@@ -21,7 +21,7 @@ exports.getKecamatan = async (req, res) => {
             features: []
         };
 
-        // Periksa jika struktur data sesuai dengan screenshot yang Anda berikan
+        // Periksa jika struktur data sesuai
         kecamatanData.forEach(doc => {
             // Jika dokumen memiliki struktur features array
             if (doc.features && Array.isArray(doc.features)) {
@@ -35,7 +35,7 @@ exports.getKecamatan = async (req, res) => {
                         if (feature.properties && feature.properties.NAMEOBJ) {
                             name = feature.properties.NAMEOBJ;
                         }
-                        // Pastikan memeriksa juga WADMKC yang berisi nama kecamatan (dari screenshot)
+                        // Pastikan memeriksa juga WADMKC yang berisi nama kecamatan
                         else if (feature.properties && feature.properties.WADMKC) {
                             name = feature.properties.WADMKC;
                         }
@@ -44,7 +44,6 @@ exports.getKecamatan = async (req, res) => {
                             type: 'Feature',
                             properties: {
                                 name: name,
-                                // Tambahkan properti lain yang mungkin berguna
                                 id: feature.properties?.OBJECTID || feature.properties?.ID || null,
                                 kode: feature.properties?.FCODE || null
                             },
@@ -53,7 +52,7 @@ exports.getKecamatan = async (req, res) => {
                     }
                 });
             }
-            // Jika dokumen sendiri adalah feature
+            // Jika dokumen adalah feature
             else if (doc.geometry) {
                 let name = 'Unknown';
 
@@ -61,7 +60,7 @@ exports.getKecamatan = async (req, res) => {
                 if (doc.properties && doc.properties.NAMEOBJ) {
                     name = doc.properties.NAMEOBJ;
                 }
-                // Pastikan memeriksa juga WADMKC yang berisi nama kecamatan (dari screenshot)
+                // Pastikan memeriksa juga WADMKC yang berisi nama kecamatan
                 else if (doc.properties && doc.properties.WADMKC) {
                     name = doc.properties.WADMKC;
                 }
