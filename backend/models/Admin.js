@@ -1,58 +1,58 @@
-const mongoose = require('mongoose'); // ODM untuk MongoDB
-const bcrypt = require('bcryptjs'); // Library untuk hashing password
+// backend/models/Admin.js
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
-// Schema untuk admin users
 const AdminSchema = new mongoose.Schema({
     username: {
         type: String,
-        required: true, // Username wajib diisi
-        unique: true, // Username harus unik
-        trim: true, // Hapus whitespace di awal/akhir
-        minlength: 3, // Minimal 3 karakter
-        maxlength: 50 // Maksimal 50 karakter
+        required: true,
+        unique: true,
+        trim: true,
+        minlength: 3,
+        maxlength: 50
     },
     password: {
         type: String,
-        required: true, // Password wajib diisi
-        minlength: 6 // Minimal 6 karakter
+        required: true,
+        minlength: 6
     },
     email: {
         type: String,
-        trim: true, // Hapus whitespace
-        lowercase: true, // Convert ke lowercase
-        default: null // Boleh kosong
+        trim: true,
+        lowercase: true,
+        default: null
     },
     role: {
         type: String,
-        enum: ['admin', 'super_admin'], // Hanya boleh admin atau super_admin
-        default: 'admin' // Default role adalah admin
+        enum: ['admin', 'super_admin'],
+        default: 'admin'
     },
     isActive: {
         type: Boolean,
-        default: true // Default user aktif
+        default: true
     },
     lastLogin: {
         type: Date,
-        default: null // Null jika belum pernah login
+        default: null
     },
     createdAt: {
         type: Date,
-        default: Date.now // Waktu pembuatan akun
+        default: Date.now
     },
     updatedAt: {
         type: Date,
-        default: Date.now // Waktu terakhir update
+        default: Date.now
     }
 });
 
-// Pre-save middleware untuk hash password
+// Hash password sebelum menyimpan
 AdminSchema.pre('save', async function (next) {
-    // Hanya hash jika password dimodifikasi
+    // Hanya hash password jika password dimodifikasi
     if (!this.isModified('password')) return next();
 
     try {
-        // Generate salt dan hash password
-        const salt = await bcrypt.genSalt(12); // Salt rounds 12 untuk keamanan tinggi
+        // Hash password dengan salt rounds 12
+        const salt = await bcrypt.genSalt(12);
         this.password = await bcrypt.hash(this.password, salt);
         next();
     } catch (error) {
@@ -69,13 +69,13 @@ AdminSchema.methods.comparePassword = async function (candidatePassword) {
     }
 };
 
-// Method untuk update last login timestamp
+// Method untuk update last login
 AdminSchema.methods.updateLastLogin = function () {
     this.lastLogin = new Date();
     return this.save();
 };
 
-// Pre-save untuk update timestamp
+// Update timestamp sebelum save
 AdminSchema.pre('save', function (next) {
     this.updatedAt = new Date();
     next();

@@ -1,13 +1,12 @@
-import axios from 'axios'; // HTTP client library
+import axios from 'axios';
 
-// Base URL API dari environment variable atau fallback ke localhost
 export const API_BASE_URL = (import.meta.env.VITE_REACT_APP_BACKEND_BASEURL || 'http://localhost:5000').replace(/\/+$/, '');
 
-// Axios default configuration
-axios.defaults.withCredentials = false; // Set false untuk public endpoints
+// Configure axios defaults
+axios.defaults.withCredentials = false; // Set to false for public endpoints
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 
-// Public axios instance - untuk endpoint yang tidak perlu authentication
+// Create separate axios instances for public and authenticated requests
 const publicAxios = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: false,
@@ -17,7 +16,6 @@ const publicAxios = axios.create({
     }
 });
 
-// Authenticated axios instance - untuk endpoint yang perlu authentication
 const authAxios = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true,
@@ -27,10 +25,9 @@ const authAxios = axios.create({
     }
 });
 
-// Request interceptor untuk authenticated requests
+// Add request interceptor for authenticated requests
 authAxios.interceptors.request.use(
     (config) => {
-        // Ambil token dari localStorage dan inject ke header
         const token = localStorage.getItem('adminToken');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
@@ -42,11 +39,10 @@ authAxios.interceptors.request.use(
     }
 );
 
-// Response interceptor untuk handle 401 errors
+// Add response interceptor for authenticated requests
 authAxios.interceptors.response.use(
     (response) => response,
     (error) => {
-        // Jika unauthorized, hapus token dan redirect ke login
         if (error.response?.status === 401) {
             localStorage.removeItem('adminToken');
             localStorage.removeItem('adminUser');
@@ -56,4 +52,4 @@ authAxios.interceptors.response.use(
     }
 );
 
-export { publicAxios, authAxios };
+export { publicAxios, authAxios }; 

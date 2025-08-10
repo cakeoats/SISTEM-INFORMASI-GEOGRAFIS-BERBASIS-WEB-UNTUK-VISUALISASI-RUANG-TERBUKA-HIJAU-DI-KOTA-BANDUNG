@@ -1,25 +1,24 @@
-import './App.css'; // Import styles
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'; // React Router untuk navigation
-import { Toaster } from './utils/toast'; // Custom toast notification system
-
-// Import komponen-komponen yang dibutuhkan
-import Navbar from './components/Navbar'; // Navigation bar component
-import ProtectedRoute from './components/ProtectedRoute'; // HOC untuk protected routes
-import LandingPage from './pages/LandingPage'; // Halaman utama/landing
-import MapPage from './pages/MapPage'; // Halaman peta
-import DataPage from './pages/DataPage'; // Halaman data RTH
-import AdminLoginPage from './pages/AdminLoginPage'; // Halaman login admin
-import AdminDashboard from './pages/AdminDashboard'; // Dashboard admin
+// src/App.jsx - Simple update
+import './App.css';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Toaster } from './utils/toast'; // Import dari utils kita
+import Navbar from './components/Navbar';
+import ProtectedRoute from './components/ProtectedRoute';
+import LandingPage from './pages/LandingPage';
+import MapPage from './pages/MapPage';
+import DataPage from './pages/DataPage';
+import AdminLoginPage from './pages/AdminLoginPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   return (
     <Router>
       <div className="flex flex-col min-h-screen w-full">
-        {/* Toast notification container - akan muncul di semua halaman */}
+        {/* Toast Notifications */}
         <Toaster />
 
         <Routes>
-          {/* Admin Routes - tidak menggunakan navbar */}
+          {/* Admin Routes - tanpa navbar */}
           <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route
             path="/admin/dashboard"
@@ -30,22 +29,22 @@ function App() {
             }
           />
 
-          {/* Public Routes - menggunakan navbar */}
+          {/* Public Routes - dengan navbar */}
           <Route
             path="/*"
             element={
               <>
-                {/* Navbar dengan z-index tinggi agar selalu di atas */}
+                {/* Navbar dengan z-index tinggi agar selalu terlihat */}
                 <div className="relative z-50">
                   <Navbar />
                 </div>
 
-                {/* Container untuk konten utama */}
+                {/* Container untuk konten yang dapat di-scroll */}
                 <div className="flex-1 overflow-auto relative">
                   <Routes>
                     <Route path="/" element={<LandingPage />} />
                     <Route path="/peta" element={
-                      <div className="h-[calc(100vh-64px)]"> {/* Height dikurangi tinggi navbar */}
+                      <div className="h-[calc(100vh-64px)]">
                         <MapPage />
                       </div>
                     } />
