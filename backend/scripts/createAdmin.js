@@ -13,8 +13,8 @@ const mongoOptions = {
     minPoolSize: 0,
     retryWrites: true,
     w: 'majority',
-    family: 4, // Force IPv4
-    appName: 'bandung-gis-admin-script' // Add app name for better monitoring
+    family: 4, 
+    appName: 'bandung-gis-admin-script' 
 };
 
 async function createAdmin() {
@@ -131,5 +131,4 @@ async function createAdmin() {
         console.log('MongoDB connection closed');
     }
 }
-
 createAdmin();

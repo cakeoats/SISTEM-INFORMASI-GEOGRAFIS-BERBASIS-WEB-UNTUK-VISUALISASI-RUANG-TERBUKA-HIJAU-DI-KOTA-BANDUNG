@@ -61,8 +61,8 @@ const mongoOptions = {
     minPoolSize: 0,
     retryWrites: true,
     w: 'majority',
-    family: 4, // Force IPv4
-    appName: 'bandung-gis-backend' // Add app name for better monitoring
+    family: 4,
+    appName: 'bandung-gis-backend'
 };
 
 // Connect to MongoDB with retry logic
