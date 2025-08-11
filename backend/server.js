@@ -15,20 +15,30 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-    origin: 'https://www.bandung-rth.my.id',
+    origin: process.env.NODE_ENV === 'production'
+        ? 'https://www.bandung-rth.my.id'
+        : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
-    credentials: false, // Set to false for public endpoints
-    maxAge: 86400 // 24 hours
+    credentials: false,
+    maxAge: 86400
 }));
 
 // Add CORS headers middleware
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://www.bandung-rth.my.id');
+    const allowedOrigins = process.env.NODE_ENV === 'production'
+        ? ['https://www.bandung-rth.my.id']
+        : ['http://localhost:3000', 'http://localhost:5173', 'http://127.0.0.1:3000', 'http://127.0.0.1:5173'];
+
+    const origin = req.headers.origin;
+    if (allowedOrigins.includes(origin)) {
+        res.header('Access-Control-Allow-Origin', origin);
+    }
+
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
     res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-    res.header('Access-Control-Allow-Credentials', 'false'); // Set to false for public endpoints
+    res.header('Access-Control-Allow-Credentials', 'false');
     res.header('Access-Control-Expose-Headers', 'Content-Range, X-Content-Range');
 
     // Handle preflight requests
@@ -37,7 +47,6 @@ app.use((req, res, next) => {
     }
     next();
 });
-
 // Middleware
 app.use(express.json());
 
