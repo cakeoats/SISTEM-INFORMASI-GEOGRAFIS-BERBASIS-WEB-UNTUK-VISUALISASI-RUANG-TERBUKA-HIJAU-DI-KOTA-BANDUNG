@@ -1,9 +1,9 @@
-// frontend/src/utils/toast.js - FIXED VERSION
+// frontend/src/utils/toast.js - FIXED VERSION dengan durasi lebih pendek dan pencegahan duplikasi
 import { toast, Toaster } from 'react-hot-toast';
 
-// Custom toast configurations
+// Custom toast configurations dengan durasi yang lebih pendek
 const toastConfig = {
-    duration: 4000,
+    duration: 2000, // Diperpendek dari 4000ms ke 2000ms (2 detik)
     position: 'top-right',
     style: {
         borderRadius: '8px',
@@ -14,10 +14,43 @@ const toastConfig = {
     },
 };
 
+// Track recent toasts to prevent duplicates
+const recentToasts = new Map();
+
+// Helper function to check for duplicate toasts
+const isDuplicateToast = (message, type) => {
+    const key = `${type}:${message}`;
+    const now = Date.now();
+
+    if (recentToasts.has(key)) {
+        const lastTime = recentToasts.get(key);
+        // Prevent same toast within 3 seconds
+        if (now - lastTime < 3000) {
+            return true;
+        }
+    }
+
+    recentToasts.set(key, now);
+
+    // Clean up old entries (older than 5 seconds)
+    for (const [k, time] of recentToasts.entries()) {
+        if (now - time > 5000) {
+            recentToasts.delete(k);
+        }
+    }
+
+    return false;
+};
+
 // Toast utility functions
 export const showToast = {
-    success: (message) => {
-        toast.success(message, {
+    success: (message, skipDuplicateCheck = false) => {
+        if (!skipDuplicateCheck && isDuplicateToast(message, 'success')) {
+            console.log('Duplicate toast prevented:', message);
+            return;
+        }
+
+        return toast.success(message, {
             ...toastConfig,
             style: {
                 ...toastConfig.style,
@@ -27,10 +60,15 @@ export const showToast = {
         });
     },
 
-    error: (message) => {
-        toast.error(message, {
+    error: (message, skipDuplicateCheck = false) => {
+        if (!skipDuplicateCheck && isDuplicateToast(message, 'error')) {
+            console.log('Duplicate error toast prevented:', message);
+            return;
+        }
+
+        return toast.error(message, {
             ...toastConfig,
-            duration: 5000, // Error toast stays longer
+            duration: 3000, // Error toast sedikit lebih lama
             style: {
                 ...toastConfig.style,
                 background: '#EF4444',
@@ -49,8 +87,13 @@ export const showToast = {
         });
     },
 
-    info: (message) => {
-        toast(message, {
+    info: (message, skipDuplicateCheck = false) => {
+        if (!skipDuplicateCheck && isDuplicateToast(message, 'info')) {
+            console.log('Duplicate info toast prevented:', message);
+            return;
+        }
+
+        return toast(message, {
             ...toastConfig,
             style: {
                 ...toastConfig.style,
@@ -60,8 +103,13 @@ export const showToast = {
         });
     },
 
-    warning: (message) => {
-        toast(message, {
+    warning: (message, skipDuplicateCheck = false) => {
+        if (!skipDuplicateCheck && isDuplicateToast(message, 'warning')) {
+            console.log('Duplicate warning toast prevented:', message);
+            return;
+        }
+
+        return toast(message, {
             ...toastConfig,
             style: {
                 ...toastConfig.style,
@@ -85,9 +133,9 @@ export const showToast = {
         },
 
         success: (filename) => {
-            toast.success(`File berhasil didownload: ${filename}`, {
+            return toast.success(`File berhasil didownload: ${filename}`, {
                 ...toastConfig,
-                duration: 6000,
+                duration: 3000, // Download success toast lebih lama
                 style: {
                     ...toastConfig.style,
                     background: '#10B981',
@@ -99,13 +147,13 @@ export const showToast = {
 
     // Custom toast for data operations
     data: {
-        saved: () => toast.success('Data berhasil disimpan'),
-        updated: () => toast.success('Data berhasil diperbarui'),
-        deleted: () => toast.success('Data berhasil dihapus'),
-        uploaded: (count) => toast.success(`${count} data berhasil diupload`),
-        loadError: () => toast.error('Gagal memuat data. Silakan refresh halaman.'),
-        saveError: () => toast.error('Gagal menyimpan data. Silakan coba lagi.'),
-        networkError: () => toast.error('Koneksi bermasalah. Periksa internet Anda.'),
+        saved: () => showToast.success('Data berhasil disimpan'),
+        updated: () => showToast.success('Data berhasil diperbarui'),
+        deleted: () => showToast.success('Data berhasil dihapus'),
+        uploaded: (count) => showToast.success(`${count} data berhasil diupload`),
+        loadError: () => showToast.error('Gagal memuat data. Silakan refresh halaman.'),
+        saveError: () => showToast.error('Gagal menyimpan data. Silakan coba lagi.'),
+        networkError: () => showToast.error('Koneksi bermasalah. Periksa internet Anda.'),
     },
 
     // Promise-based toast for async operations
@@ -115,6 +163,20 @@ export const showToast = {
             success: messages.success || 'Success!',
             error: messages.error || 'Something went wrong!',
         }, toastConfig);
+    },
+
+    // Utility functions
+    dismiss: (toastId) => {
+        return toast.dismiss(toastId);
+    },
+
+    remove: (toastId) => {
+        return toast.remove(toastId);
+    },
+
+    // Clear all toasts
+    dismissAll: () => {
+        return toast.dismiss();
     }
 };
 

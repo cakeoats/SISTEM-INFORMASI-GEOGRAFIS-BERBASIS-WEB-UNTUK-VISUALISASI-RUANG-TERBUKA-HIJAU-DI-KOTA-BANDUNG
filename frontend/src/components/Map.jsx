@@ -1,4 +1,4 @@
-// frontend/src/components/Map.jsx - Fixed tanpa MapHelpSystem
+// frontend/src/components/Map.jsx - Fixed dengan loading toast dismiss yang benar
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -8,6 +8,7 @@ import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
 import { API_BASE_URL, publicAxios } from '../config';
 import { showToast } from '../utils/toast';
+import { toast } from 'react-hot-toast'; // Import toast untuk dismiss
 
 const BandungMap = () => {
     // State untuk data GeoJSON kecamatan dan data RTH
@@ -97,12 +98,19 @@ const BandungMap = () => {
                 // Simulate delay untuk better UX
                 await new Promise(resolve => setTimeout(resolve, 500));
 
-                showToast.success('Peta berhasil dimuat!');
+                // FIXED: Dismiss loading toast sebelum menampilkan success toast
+                toast.dismiss(loadingToast);
+
+                // Gunakan pesan yang berbeda dari DataPage untuk menghindari duplikasi
+                showToast.success('Peta interaktif siap digunakan!');
                 setLoading(false);
                 setMapReady(true);
 
             } catch (err) {
                 console.error('Error fetching map data:', err);
+
+                // FIXED: Dismiss loading toast jika error
+                toast.dismiss(loadingToast);
 
                 // Specific error messages
                 if (err.response?.status === 404) {
